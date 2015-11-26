@@ -11,14 +11,19 @@ var ScreenWatcher = function () {
     this._sw = null;
 };
 
+ScreenWatcher.prototype.setRotation = function (n) {
+    if (this._sw)
+        this._sw.stdint.write("rotate " + n);
+};
+
 ScreenWatcher.prototype.start = function start() {
     var self = this;
 
     debug("Starting ScreenWatcher");
 
-    process.env["CLASSPATH"] = path.join("_bin", "screenwatcher.apk");
+    process.env["CLASSPATH"] = path.join("_bin", "screencmd.apk");
 
-    this._sw = cp.spawn("/system/bin/app_process", [".", "com.opersys.remoteinterface.ScreenWatcher"]);
+    this._sw = cp.spawn("/system/bin/app_process", [".", "com.opersys.remoteinterface.ScreenCommands"]);
 
     this._sw.stdout.on("data", function (data) {
         var r, rots = data.toString();
@@ -31,8 +36,6 @@ ScreenWatcher.prototype.start = function start() {
         if (!r)
             debug("Received " + rots + " instead of full line, discarding");
         else {
-            //var util = require("util");
-            //console.log(util.inspect(r));
             var angle = +r.slice(-1)[0];
 
             debug("Rotation: " + angle);
