@@ -231,6 +231,8 @@ InputWebSocketHandler.prototype.onInputWebSocketMessage = function (jsData) {
 };
 
 InputWebSocketHandler.prototype.touchDown = function(contact, point, pressure) {
+    if (!this.banner) return;
+
     this._write(util.format(
         "d %s %s %s %s\n",
         contact,
@@ -241,6 +243,8 @@ InputWebSocketHandler.prototype.touchDown = function(contact, point, pressure) {
 };
 
 InputWebSocketHandler.prototype.touchMove = function(contact, point, pressure) {
+    if (!this.banner) return;
+
     this._write(util.format(
         "m %s %s %s %s\n",
         contact,
