@@ -8,9 +8,9 @@ var cp = require("child_process");
 var Binder = require("jsbinder");
 var path = require("path");
 var debug = require("debug")("RI");
-require("longjohn");
+//require("longjohn");
 
-var ScreenWatcher = require("./screenwatcher.js");
+var ScreenWatcher = require("./commandserver.js");
 var DisplayWebSocketHandler = require("./display_websocket.js");
 var InputWebSocketHandler = require("./input_websocket.js");
 var EventWebSocketHandler = require("./event_websocket.js");

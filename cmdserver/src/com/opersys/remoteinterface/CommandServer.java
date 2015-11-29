@@ -3,10 +3,10 @@ package com.opersys.remoteinterface;
 import android.content.Context;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemClock;
 import android.util.Log;
-import android.view.IRotationWatcher;
-import android.view.IWindowManager;
-import android.view.Surface;
+import android.view.*;
+import jp.co.cyberagent.stf.compat.InputManagerWrapper;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -19,9 +19,9 @@ import java.util.StringTokenizer;
  *
  * https://github.com/openstf/STFService.apk/blob/master/app/src/main/java/jp/co/cyberagent/stf/monitor/RotationMonitor.java
  */
-public class ScreenCommands {
+public class CommandServer {
 
-    private static String TAG = "RI.ScreenCommands";
+    private static String TAG = "RI.CommandServer";
 
     private static void setInitialRotation(int n) {
         IWindowManager wm;
@@ -37,10 +37,72 @@ public class ScreenCommands {
     }
 
     private static class CommandHandlerThread extends Thread {
-        private static String TAG = "RI.ScreenCommands.CommandHandlerThread";
+        private static String TAG = "RI.CommandServer.CommandHandlerThread";
 
         private BufferedReader br;
         private IWindowManager wm;
+        private InputManagerWrapper inputManager;
+        private KeyCharacterMap keyCharacterMap;
+
+        private int deviceId = -1; // KeyCharacterMap.VIRTUAL_KEYBOARD
+
+        private void selectDevice() {
+            try {
+                deviceId = KeyCharacterMap.class.getDeclaredField("VIRTUAL_KEYBOARD").getInt(KeyCharacterMap.class);
+            }
+            catch (NoSuchFieldException e) {
+                System.err.println("Falling back to KeyCharacterMap.BUILT_IN_KEYBOARD");
+                deviceId = 0;
+            }
+            catch (IllegalAccessException e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+        }
+
+        private void loadKeyCharacterMap() {
+            keyCharacterMap = KeyCharacterMap.load(deviceId);
+        }
+
+        private void keyDown(int keyCode, int metaState) {
+            long time = SystemClock.uptimeMillis();
+            inputManager.injectKeyEvent(new KeyEvent(
+                    time,
+                    time,
+                    KeyEvent.ACTION_DOWN,
+                    keyCode,
+                    0,
+                    metaState,
+                    deviceId,
+                    0,
+                    KeyEvent.FLAG_FROM_SYSTEM,
+                    InputDevice.SOURCE_KEYBOARD
+            ));
+        }
+
+        private void keyUp(int keyCode, int metaState) {
+            long time = SystemClock.uptimeMillis();
+            inputManager.injectKeyEvent(new KeyEvent(
+                    time,
+                    time,
+                    KeyEvent.ACTION_UP,
+                    keyCode,
+                    0,
+                    metaState,
+                    deviceId,
+                    0,
+                    KeyEvent.FLAG_FROM_SYSTEM,
+                    InputDevice.SOURCE_KEYBOARD
+            ));
+        }
+
+        private void type(String text) {
+            KeyEvent[] events = keyCharacterMap.getEvents(text.toCharArray());
+
+            for (KeyEvent event : events) {
+                inputManager.injectKeyEvent(event);
+            }
+        }
 
         public void run() {
             try {
@@ -52,13 +114,14 @@ public class ScreenCommands {
                     st = new StringTokenizer(cmd);
                     c = st.nextToken(" ");
 
+                    Log.d(TAG, "Received command: " + cmd);
+
                     // Rotate command.
                     if ("rotate".equals(c)) {
                         int crot, rot = Surface.ROTATION_0;
 
                         crot = Integer.parseInt(st.nextToken(" "));
 
-                        //
                         switch (crot) {
                             case 0:   rot = Surface.ROTATION_0;   break;
                             case 90:  rot = Surface.ROTATION_90;  break;
@@ -75,7 +138,18 @@ public class ScreenCommands {
                             Log.e(TAG, "Exception while trying to change rotation", ex);
                         }
                     }
-
+                    else if ("keydown".equals(c)) {
+                        int code = Integer.parseInt(st.nextToken(" "));
+                        keyDown(code, 0);
+                    }
+                    else if ("keyup".equals(c)) {
+                        int code = Integer.parseInt(st.nextToken(" "));
+                        keyUp(code, 0);
+                    }
+                    else if ("type".equals(c)) {
+                        String str = cmd.substring("type".length() + 1);
+                        type(str);
+                    }
                     // Unknown command.
                     else {
                         Log.e(TAG, "Don't know what to do with the command line: " + cmd);
@@ -89,13 +163,17 @@ public class ScreenCommands {
         }
 
         public CommandHandlerThread() {
-            br = new BufferedReader(new InputStreamReader(System.in));
-            wm = IWindowManager.Stub.asInterface(ServiceManager.getService(Context.WINDOW_SERVICE));
+            this.br = new BufferedReader(new InputStreamReader(System.in));
+            this.wm = IWindowManager.Stub.asInterface(ServiceManager.getService(Context.WINDOW_SERVICE));
+            this.inputManager = new InputManagerWrapper();
+
+            selectDevice();
+            loadKeyCharacterMap();
         }
     }
 
     private static class RotationWatcherThread extends Thread {
-        private static String TAG = "RI.ScreenCommands.RotationWatcherThread";
+        private static String TAG = "RI.CommandServer.RotationWatcherThread";
 
         IRotationWatcher watcher = new IRotationWatcher.Stub() {
             @Override
@@ -151,7 +229,7 @@ public class ScreenCommands {
 
         setInitialRotation(Surface.ROTATION_0);
 
-        Log.d(TAG, "Starting ScreenCommands");
+        Log.d(TAG, "Starting CommandServer");
 
         rotWatcher = new RotationWatcherThread();
         cmdHandler = new CommandHandlerThread();
@@ -165,6 +243,6 @@ public class ScreenCommands {
 
         } catch (InterruptedException e) {}
 
-        Log.d(TAG, "Ending ScreenCommands");
+        Log.d(TAG, "Ending CommandServer");
     }
 }

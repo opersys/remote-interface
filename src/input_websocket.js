@@ -12,15 +12,15 @@ var props = require("./props.js");
 var Minitouch = require("./minitouch_process.js");
 var MinitouchHelper = require("./daemon_process_helpers");
 
-var InputWebSocketHandler = function (wss, screenwatcher) {
+var InputWebSocketHandler = function (wss, commandServer) {
     this.props = [
         "ro.product.cpu.abi",
         "ro.build.version.sdk"
     ];
 
     this.banner = null;
-    this.screenwatcher = screenwatcher;
-    this.screenwatcher.screenWatcherRotationSignal.add(this.onScreenWatcherRotation.bind(this));
+    this.commandServer = commandServer;
+    this.commandServer.screenWatcherRotationSignal.add(this.onScreenWatcherRotation.bind(this));
 
     wss.on("connection", this.onInputWebSocketConnect.bind(this));
 };
@@ -214,8 +214,6 @@ InputWebSocketHandler.prototype._write = function (s) {
 };
 
 InputWebSocketHandler.prototype.onInputWebSocketMessage = function (jsData) {
-    debug("Received: " + jsData);
-
     var data = JSON.parse(jsData);
 
     if (data.msg == "input.mousedown")
@@ -227,10 +225,34 @@ InputWebSocketHandler.prototype.onInputWebSocketMessage = function (jsData) {
     else if (data.msg == "input.mouseup")
         this.touchUp(data.contact);
 
+    else if (data.msg == "input.keydown")
+        this.keyDown(data.key);
+
+    else if (data.msg == "input.keyup")
+        this.keyUp(data.key);
+
+    else if (data.msg == "input.type")
+        this.type(data.text);
+
     this.touchCommit();
 };
 
-InputWebSocketHandler.prototype.touchDown = function(contact, point, pressure) {
+InputWebSocketHandler.prototype.type = function (text) {
+    if (!this.banner) return;
+    this.commandServer.type(text);
+};
+
+InputWebSocketHandler.prototype.keyDown = function (key) {
+    if (!this.banner) return;
+    this.commandServer.keyDown(key);
+};
+
+InputWebSocketHandler.prototype.keyUp = function (key) {
+    if (!this.banner) return;
+    this.commandServer.keyUp(key);
+};
+
+InputWebSocketHandler.prototype.touchDown = function (contact, point, pressure) {
     if (!this.banner) return;
 
     this._write(util.format(
@@ -242,7 +264,7 @@ InputWebSocketHandler.prototype.touchDown = function(contact, point, pressure) {
     ));
 };
 
-InputWebSocketHandler.prototype.touchMove = function(contact, point, pressure) {
+InputWebSocketHandler.prototype.touchMove = function (contact, point, pressure) {
     if (!this.banner) return;
 
     this._write(util.format(
@@ -254,7 +276,8 @@ InputWebSocketHandler.prototype.touchMove = function(contact, point, pressure) {
     ));
 };
 
-InputWebSocketHandler.prototype.touchUp = function(contact) {
+InputWebSocketHandler.prototype.touchUp = function (contact) {
+    if (!this.banner) return;
     return this._write(util.format("u %s\n", contact));
 };
 

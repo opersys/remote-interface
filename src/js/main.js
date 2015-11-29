@@ -4,8 +4,8 @@ var BLANK_IMG =
     'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 var canvas = document.getElementById("device-screen-canvas"),
-    positioner = document.getElementById("positioner");
-    root = document.getElementById("device-screen-root");
+    positioner = document.getElementById("positioner"),
+    input = document.getElementById("input"),
     g = canvas.getContext('2d');
 
 var wsMinicap = null;
@@ -415,9 +415,51 @@ wsMinitouch.onopen = function () {
     canvas.addEventListener("mousemove", minitouchMouseMove);
     canvas.addEventListener("mouseup", minitouchMouseUp);
     canvas.addEventListener("mouseleave", minitouchMouseUp);
+
+    input.addEventListener("keydown", keydownListener);
+    input.addEventListener("keyup", keyupListener);
+    input.addEventListener("input", inputListener);
+    //canvas.bind('input', inputListener);
+    //canvas.bind('paste', pasteListener);
+    //canvas.bind('copy', copyListener);
 };
 
+function inputListener(e) {
+    wsMinitouch.send(JSON.stringify({
+        msg: "input.type",
+        text: input.value
+    }));
+
+    input.value = "";
+}
+
+function keyupListener(e) {
+    if (e.keyCode === 9) e.preventDefault();
+
+    if (e.keyCode < String.fromCharCode('a') || e.keyCode > String.fromCharCode('z')) {
+        wsMinitouch.send(JSON.stringify({
+            msg: "input.keyup",
+            key: e.keyCode
+        }));
+    }
+}
+
+function keydownListener(e) {
+    if (e.keyCode === 9) e.preventDefault();
+
+    if (e.keyCode < String.fromCharCode('a') || e.keyCode > String.fromCharCode('z')) {
+        wsMinitouch.send(JSON.stringify({
+            msg: "input.keydown",
+            key: e.keyCode
+        }));
+    }
+}
+
 function minitouchMouseDown(e) {
+    e.preventDefault();
+
+    input.focus();
+
     calculateBounds();
 
     var x = e.pageX - screen.bounds.x;
@@ -441,6 +483,10 @@ function minitouchMouseDown(e) {
 }
 
 function minitouchMouseMove(e) {
+    e.preventDefault();
+
+    input.focus();
+
     calculateBounds();
 
     var x = e.pageX - screen.bounds.x;
@@ -464,6 +510,10 @@ function minitouchMouseMove(e) {
 }
 
 function minitouchMouseUp(e) {
+    e.preventDefault();
+
+    input.focus();
+
     calculateBounds();
 
     var x = e.pageX - screen.bounds.x;

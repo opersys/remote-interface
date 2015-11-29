@@ -114,8 +114,8 @@ module.exports = function (grunt) {
                 { expand: true, cwd: "minitouch/libs", src: ["**"],
                     mode: "0755", dest: mkdist("_bin/minitouch") },
 
-                { expand: true, cwd: "out/production/screenwatcher",
-                    src: ["screenwatcher.apk"], dest: mkdist("_bin") }
+                { expand: true, cwd: "out/production/cmdserver",
+                    src: ["cmdserver.apk"], dest: mkdist("_bin") }
             ]
         };
 
