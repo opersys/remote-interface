@@ -1,4 +1,18 @@
-/*jshint browser:true*/
+/*
+ * Copyright (C) 2015 Opersys inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 var BLANK_IMG =
     'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
@@ -9,8 +23,8 @@ var canvas = document.getElementById("device-screen-canvas"),
     g = canvas.getContext('2d');
 
 var wsMinicap = null;
-var wsMinitouch = new WebSocket("ws://localhost:9002/minitouch", "minitouch");
-var wsEvent = new WebSocket("ws://localhost:9002/events", "events");
+var wsMinitouch = new WebSocket("ws://" + window.location.host + "/minitouch", "minitouch");
+var wsEvent = new WebSocket("ws://" + window.location.host + "/events", "events");
 
 wsMinitouch.onclose = function () {
     console.log("minitouch onclose", arguments);
@@ -26,7 +40,7 @@ var minicapTimeout = 100;
 function connectMinicap() {
     console.log("Connecting to minicap socket.");
 
-    wsMinicap = new WebSocket("ws://localhost:9002/minicap", "minicap");
+    wsMinicap = new WebSocket("ws://" + window.location.host + "/minicap", "minicap");
     wsMinicap.binaryType = 'blob';
 
     wsMinicap.onclose = function() {

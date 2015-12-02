@@ -21,6 +21,7 @@ var util = require("util");
 var _ = require("underscore");
 var Download = require("download");
 var async = require("async");
+var md5file = require("md5-file");
 
 module.exports = function (grunt) {
 
@@ -203,6 +204,22 @@ module.exports = function (grunt) {
     grunt.config("compress", compress_config);
     grunt.config("handlebars", handlebars_config);
 
+    grunt.config("template", {
+        "process-otlauncher-template": {
+            "options": {
+                "data": function () {
+                    return {
+                        "ia32_md5sum": md5file(["out/", grunt.config("pkg.name"), "_ia32", ".zip"].join("")),
+                        "arm_md5sum": md5file(["out/", grunt.config("pkg.name"), "_arm", ".zip"].join(""))
+                    }
+                }
+            },
+            "files": {
+                "out/otlauncher.json": ["otlauncher.json.tmpl"]
+            }
+        }
+    });
+
     grunt.registerTask("toolchain", "Generate an Android toolchain", function (arch) {
         var architectures = [];
 
@@ -310,8 +327,9 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks("grunt-contrib-compress");
     grunt.loadNpmTasks("grunt-contrib-handlebars");
     grunt.loadNpmTasks("grunt-chmod");
+    grunt.loadNpmTasks('grunt-template');
 
     grunt.registerTask("default", ["dist_arm", "dist_ia32"]);
-    grunt.registerTask("pack", ["out_arm", "out_ia32"]);
+    grunt.registerTask("pack", ["out_arm", "out_ia32", "template"]);
 };
 

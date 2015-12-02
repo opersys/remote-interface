@@ -1,3 +1,15 @@
+/*
+ * This file was obtained from the STFAgent.apk repository in the OpenSTF project, at this URL:
+ *
+ * https://github.com/openstf/STFService.apk/blob/master/app/src/main/java/jp/co/cyberagent/stf/compat/InputManagerWrapper.java
+ *
+ * The file is under an Apache 2.0 License:
+ *
+ * https://github.com/openstf/STFService.apk/blob/master/LICENSE
+ *
+ * The file was NOT modified.
+ */
+
 package jp.co.cyberagent.stf.compat;
 
 import android.view.InputEvent;

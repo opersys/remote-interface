@@ -1,4 +1,7 @@
-// SCALLING SERVICE
+/*
+ *
+ */
+
 var scalingService = {};
 
 var ScalingService = function (realWidth, realHeight) {

@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "default": "remote-interface",
+
+  "packages": [
+    {
+      "id": "remote-interface",
+      "desc": "Remote Interface v0.1",
+      "cmd": "./node app.js",
+      "files": [
+        {
+          "file": "remote-interface_ia32.zip",
+          "md5sum": "<%- ia32_md5sum %>",
+          "arch": "ia32",
+          "modes": {
+            "node": "0755",
+            "_bin/minitouch/x86_64/minitouch": "0755",
+            "_bin/minitouch/mips/minitouch": "0755",
+            "_bin/minitouch/x86/minitouch": "0755",
+            "_bin/minitouch/arm64-v8a/minitouch": "0755",
+            "_bin/minitouch/armeabi/minitouch": "0755",
+            "_bin/minitouch/mips64/minitouch": "0755",
+            "_bin/minitouch/armeabi-v7a/minitouch": "0755",
+            "_bin/minicap/x86_64/minicap": "0755",
+            "_bin/minicap/x86/minicap": "0755",
+            "_bin/minicap/arm64-v8a/minicap": "0755",
+            "_bin/minicap/armeabi-v7a/minicap": "0755"
+          }
+        },
+        {
+          "file": "remote-interface_arm.zip",
+          "md5sum": "<%- arm_md5sum %>",
+          "arch": "arm",
+          "modes": {
+            "node": "0755",
+            "_bin/minitouch/x86_64/minitouch": "0755",
+            "_bin/minitouch/mips/minitouch": "0755",
+            "_bin/minitouch/x86/minitouch": "0755",
+            "_bin/minitouch/arm64-v8a/minitouch": "0755",
+            "_bin/minitouch/armeabi/minitouch": "0755",
+            "_bin/minitouch/mips64/minitouch": "0755",
+            "_bin/minitouch/armeabi-v7a/minitouch": "0755",
+            "_bin/minicap/x86_64/minicap": "0755",
+            "_bin/minicap/x86/minicap": "0755",
+            "_bin/minicap/arm64-v8a/minicap": "0755",
+            "_bin/minicap/armeabi-v7a/minicap": "0755"
+          }
+        }
+      ]
+    }
+  ]
+}
