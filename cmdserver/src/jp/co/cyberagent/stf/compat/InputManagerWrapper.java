@@ -3,7 +3,7 @@
  *
  * https://github.com/openstf/STFService.apk/blob/master/app/src/main/java/jp/co/cyberagent/stf/compat/InputManagerWrapper.java
  *
- * The file is under an Apache 2.0 License:
+ * The project is under an Apache 2.0 License:
  *
  * https://github.com/openstf/STFService.apk/blob/master/LICENSE
  *

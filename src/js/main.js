@@ -14,6 +14,18 @@
  * limitations under the License.
  */
 
+/*
+ * A lot of the code below was taken from OpenSTF:
+ *
+ * https://github.com/openstf/stf/blob/master/res/app/components/stf/screen/screen-directive.js
+ *
+ * The project is under an Apache 2.0 License:
+ *
+ * https://github.com/openstf/stf/blob/master/LICENSE
+ *
+ * ...and then beaten mercilessly into submission.
+ */
+
 var BLANK_IMG =
     'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
@@ -195,37 +207,6 @@ function connectMinicap() {
     })();
 }
 
-// IMAGEPOOL
-
-function ImagePool(size) {
-    this.size = size;
-    this.images = [];
-    this.counter = 0
-}
-
-ImagePool.prototype.next = function() {
-    if (this.images.length < this.size) {
-        var image = new Image();
-        this.images.push(image);
-        return image
-    }
-    else {
-        if (this.counter >= this.size) {
-            // Reset for unlikely but theoretically possible overflow.
-            this.counter = 0
-        }
-
-        return this.images[this.counter++ % this.size]
-    }
-};
-
-// END IMAGEPOOL
-
-// A lot of the code below was taken from OpenSTF:
-// https://github.com/openstf/stf/blob/master/res/app/components/stf/screen/screen-directive.js
-//
-// and then beaten mercilessly into submission..
-
 var cssTransform = "transform";
 var URL = window.URL || window.webkitURL;
 
@@ -239,33 +220,6 @@ var screen = {
         y: 0,
         w: 0,
         h: 0
-    }
-};
-
-var mapping = {
-    0: {
-        0: 0,
-        90: -90,
-        180: -180,
-        270: 90
-    },
-    90: {
-        0: 90,
-        90: 0,
-        180: -90,
-        270: 180
-    },
-    180: {
-        0: 180,
-        90: 90,
-        180: 0,
-        270: -90
-    },
-    270: {
-        0: -90,
-        90: -180,
-        180: 90,
-        270: 0
     }
 };
 
@@ -290,13 +244,6 @@ function calculateBounds() {
         screen.bounds.y += el.offsetTop;
         el = el.offsetParent
     }
-}
-
-function rotator(oldRotation, newRotation) {
-    var r1 = oldRotation < 0 ? 360 + oldRotation % 360 : oldRotation % 360;
-    var r2 = newRotation < 0 ? 360 + newRotation % 360 : newRotation % 360;
-
-    return mapping[r1][r2];
 }
 
 var scaler = new ScalingService(
@@ -433,9 +380,6 @@ wsMinitouch.onopen = function () {
     input.addEventListener("keydown", keydownListener);
     input.addEventListener("keyup", keyupListener);
     input.addEventListener("input", inputListener);
-    //canvas.bind('input', inputListener);
-    //canvas.bind('paste', pasteListener);
-    //canvas.bind('copy', copyListener);
 };
 
 function inputListener(e) {

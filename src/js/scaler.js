@@ -1,5 +1,13 @@
 /*
+ * This file was obtained from the stf repository in the OpenSTF project, at this URL:
  *
+ * https://github.com/openstf/stf/blob/master/res/app/components/stf/screen/scaling/scaling-service.js
+ *
+ * The project is under an Apache 2.0 License:
+ *
+ * https://github.com/openstf/stf/blob/master/LICENSE
+ *
+ * The file was changed lightly to integrate with the rest of the current project.
  */
 
 var scalingService = {};
