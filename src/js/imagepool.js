@@ -31,3 +31,5 @@ ImagePool.prototype.next = function() {
         return this.images[this.counter++ % this.size]
     }
 };
+
+module.exports = ImagePool;

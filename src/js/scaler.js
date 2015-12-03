@@ -10,8 +10,6 @@
  * The file was changed lightly to integrate with the rest of the current project.
  */
 
-var scalingService = {};
-
 var ScalingService = function (realWidth, realHeight) {
     var realRatio = realWidth / realHeight;
 
@@ -213,3 +211,5 @@ var ScalingService = function (realWidth, realHeight) {
         }
     }
 };
+
+module.exports = ScalingService;

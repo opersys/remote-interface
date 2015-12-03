@@ -3,11 +3,11 @@
  *
  * https://github.com/openstf/stf/blob/master/res/app/components/stf/screen/rotator.js
  *
- * The project is under an Apache 2.0 License:
+ * The is under an Apache 2.0 License:
  *
  * https://github.com/openstf/stf/blob/master/LICENSE
  *
- * The file was changed lightly to integrate with the rest of the current project.
+ * The file was changed lightly to integrate with the rest of the project.
  */
 
 var mapping = {
@@ -37,9 +37,9 @@ var mapping = {
     }
 };
 
-function rotator(oldRotation, newRotation) {
+module.exports = function rotator(oldRotation, newRotation) {
     var r1 = oldRotation < 0 ? 360 + oldRotation % 360 : oldRotation % 360
         , r2 = newRotation < 0 ? 360 + newRotation % 360 : newRotation % 360
 
     return mapping[r1][r2]
-}
+};

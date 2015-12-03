@@ -26,6 +26,10 @@
  * ...and then beaten mercilessly into submission.
  */
 
+var ImagePool = require("./imagepool.js");
+var rotator = require("./rotator.js");
+var ScalingService = require("./scaler.js");
+
 var BLANK_IMG =
     'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 

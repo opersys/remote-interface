@@ -28,6 +28,7 @@ module.exports = function (grunt) {
     var mkdir_config = {},
         bower_config = {},
         copy_config = {},
+        webpack_config = {},
         prebuilts_config = {},
         exec_config = {},
         compress_config = {},
@@ -61,7 +62,6 @@ module.exports = function (grunt) {
                 create: [
                     mkdist("_bin"),
                     mkdist("public", "css"),
-                    mkdist("public", "js"),
                     mkdist("public", "fonts"),
                     "out"
                 ]
@@ -84,6 +84,14 @@ module.exports = function (grunt) {
             }
         };
 
+        webpack_config["dist_" + arch] = {
+            entry: "./src/js/main.js",
+            output: {
+                filename: mkdist("public", "js", "bundle.js")
+            },
+
+        };
+
         handlebars_config["dist_" + arch] = {
             options: {
                 namespace: "JST",
@@ -97,14 +105,13 @@ module.exports = function (grunt) {
         copy_config["dist_" + arch] = {
             files: [
                 { src: ["package.json"], dest: mkdist("/") },
+
                 { expand: true, cwd: "bin", src: ["**"], dest: mkdist("_bin") },
                 { expand: true, cwd: "images", src: ["**"], dest: mkdist("public", "images") },
                 { expand: true, cwd: "src/css", src: ["*"], dest: mkdist("public", "css") },
                 { expand: true, cwd: "src/html", src: ["*"], dest: mkdist("public") },
-                { expand: true, cwd: "src/jslib", src: ["*"], dest: mkdist("public", "js") },
-                { expand: true, cwd: "src/js", src: ["**"], dest: mkdist("public", "js") },
-                { expand: true, cwd: "src/", src: ["*"], dest: mkdist() },
                 { expand: true, cwd: "fonts/", src: ["*"], dest: mkdist("public/fonts") },
+                { expand: true, cwd: "src/", src: ["*"], dest: mkdist() },
 
                 { expand: true, cwd: "minicap/libs", src: ["**"], mode: "0755",
                     dest: mkdist("_bin/minicap") },
@@ -183,6 +190,7 @@ module.exports = function (grunt) {
         grunt.registerTask("dist_" + arch, [
             "mkdir:dist_" + arch,
             "bower:dist_" + arch,
+            "webpack:dist_" + arch,
             "copy:dist_" + arch,
             "prebuilts:dist_" + arch,
             "exec:dist_npm_" + arch,
@@ -198,6 +206,7 @@ module.exports = function (grunt) {
 
     grunt.config("mkdir", mkdir_config);
     grunt.config("bower", bower_config);
+    grunt.config("webpack", webpack_config);
     grunt.config("copy", copy_config);
     grunt.config("exec", exec_config);
     grunt.config("prebuilts", prebuilts_config);
@@ -327,7 +336,8 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks("grunt-contrib-compress");
     grunt.loadNpmTasks("grunt-contrib-handlebars");
     grunt.loadNpmTasks("grunt-chmod");
-    grunt.loadNpmTasks('grunt-template');
+    grunt.loadNpmTasks("grunt-template");
+    grunt.loadNpmTasks("grunt-webpack");
 
     grunt.registerTask("default", ["dist_arm", "dist_ia32"]);
     grunt.registerTask("pack", ["out_arm", "out_ia32", "template"]);
