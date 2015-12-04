@@ -28,7 +28,7 @@ var props = require("./props.js");
 var Minitouch = require("./minitouch_process.js");
 var MinitouchHelper = require("./daemon_process_helpers");
 
-var InputWebSocketHandler = function (wss, commandServer) {
+var CommWebSocketHandler = function (wss, commandServer) {
     this.props = [
         "ro.product.cpu.abi",
         "ro.build.version.sdk"
@@ -38,10 +38,10 @@ var InputWebSocketHandler = function (wss, commandServer) {
     this.commandServer = commandServer;
     this.commandServer.screenWatcherRotationSignal.add(this.onScreenWatcherRotation.bind(this));
 
-    wss.on("connection", this.onInputWebSocketConnect.bind(this));
+    wss.on("connection", this.onCommWebsocketConnect.bind(this));
 };
 
-InputWebSocketHandler.prototype.onInputWebSocketConnect = function (ws) {
+CommWebSocketHandler.prototype.onCommWebsocketConnect = function (ws) {
     debug("Web socket connected");
 
     this.ws = ws;
@@ -49,18 +49,19 @@ InputWebSocketHandler.prototype.onInputWebSocketConnect = function (ws) {
     if (!this._minitouch)
         this.startOrRestartMinitouch();
 
-    ws.on("close", this.onInputWebSocketClose.bind(this));
-    ws.on("message", this.onInputWebSocketMessage.bind(this));
+    ws.on("close", this.onCommWebsocketClose.bind(this));
+    ws.on("message", this.onCommWebsocketMessage.bind(this));
 };
 
-InputWebSocketHandler.prototype.onInputWebSocketClose = function () {
+CommWebSocketHandler.prototype.onCommWebsocketClose = function () {
     debug("Web socket disconnected");
 };
 
-InputWebSocketHandler.prototype.onScreenWatcherRotation = function () {
+CommWebSocketHandler.prototype.onScreenWatcherRotation = function (rotation) {
     debug("Device rotated, restarting minitouch");
 
-    this.startOrRestartMinitouch();
+    // Send the rotation event.
+    this.ws.send(JSON.stringify({event: "rotation", data: rotation}));
 };
 
 /*
@@ -81,7 +82,7 @@ InputWebSocketHandler.prototype.onScreenWatcherRotation = function () {
  */
 
 /* This looks silly but preserves some consistancy with OpenSTF code. */
-InputWebSocketHandler.prototype.origin = {
+CommWebSocketHandler.prototype.origin = {
     x: function(point) {
         return point.x
     },
@@ -90,7 +91,7 @@ InputWebSocketHandler.prototype.origin = {
     }
 };
 
-InputWebSocketHandler.prototype._nreadLine = function (socket, n, resultCb) {
+CommWebSocketHandler.prototype._nreadLine = function (socket, n, resultCb) {
     var lineBuf = "";
     var lines = [];
 
@@ -123,7 +124,7 @@ InputWebSocketHandler.prototype._nreadLine = function (socket, n, resultCb) {
     socket.once("readable", function () { readLines(); });
 };
 
-InputWebSocketHandler.prototype._readBanner = function(socket) {
+CommWebSocketHandler.prototype._readBanner = function(socket) {
     var self = this;
 
     function parseVersion(versionLine) {
@@ -184,14 +185,14 @@ InputWebSocketHandler.prototype._readBanner = function(socket) {
     });
 };
 
-InputWebSocketHandler.prototype._onMinitouchStarted = function () {
+CommWebSocketHandler.prototype._onMinitouchStarted = function () {
     return MinitouchHelper.process_connect.apply(this, ["minitouch", this._minitouch, function (stream) {
         this.stream = stream;
         this._readBanner(this.stream);
     }]);
 };
 
-InputWebSocketHandler.prototype._onMinitouchStopping = function () {
+CommWebSocketHandler.prototype._onMinitouchStopping = function () {
     // Close the stream to minitouch if it's open.
     if (this.stream) {
         this.stream.end();
@@ -201,7 +202,7 @@ InputWebSocketHandler.prototype._onMinitouchStopping = function () {
     if (this._isRestarting) this._startMinitouch();
 };
 
-InputWebSocketHandler.prototype._startMinitouch = function () {
+CommWebSocketHandler.prototype._startMinitouch = function () {
     this._minitouch = new Minitouch();
     this._minitouch.start();
 
@@ -213,7 +214,7 @@ InputWebSocketHandler.prototype._startMinitouch = function () {
     this._minitouch.stoppingSignal.add(this._stoppingSignalHandler);
 };
 
-InputWebSocketHandler.prototype.startOrRestartMinitouch = function () {
+CommWebSocketHandler.prototype.startOrRestartMinitouch = function () {
     if (!this._minitouch)
         this._startMinitouch();
 
@@ -225,50 +226,30 @@ InputWebSocketHandler.prototype.startOrRestartMinitouch = function () {
     }
 };
 
-InputWebSocketHandler.prototype._write = function (s) {
+CommWebSocketHandler.prototype._write = function (s) {
     this.stream.write(s);
 };
 
-InputWebSocketHandler.prototype.onInputWebSocketMessage = function (jsData) {
+CommWebSocketHandler.prototype.onCommWebsocketMessage = function (jsData) {
     var data = JSON.parse(jsData);
 
-    if (data.msg == "input.mousedown")
+    // Most commands are forwarded to the Java command server
+    if (data.cmd.match(/input./) || data.cmd.match(/display./))
+        return this.commandServer.send(jsData);
+
+    if (data.cmd == "mouse.down")
         this.touchDown(data.contact, data.point, data.pressure);
 
-    else if (data.msg == "input.mousemove")
+    else if (data.cmd == "mouse.move")
         this.touchMove(data.contact, data.point, data.pressure);
 
-    else if (data.msg == "input.mouseup")
+    else if (data.cmd == "mouse.up")
         this.touchUp(data.contact);
-
-    else if (data.msg == "input.keydown")
-        this.keyDown(data.key);
-
-    else if (data.msg == "input.keyup")
-        this.keyUp(data.key);
-
-    else if (data.msg == "input.type")
-        this.type(data.text);
 
     this.touchCommit();
 };
 
-InputWebSocketHandler.prototype.type = function (text) {
-    if (!this.banner) return;
-    this.commandServer.type(text);
-};
-
-InputWebSocketHandler.prototype.keyDown = function (key) {
-    if (!this.banner) return;
-    this.commandServer.keyDown(key);
-};
-
-InputWebSocketHandler.prototype.keyUp = function (key) {
-    if (!this.banner) return;
-    this.commandServer.keyUp(key);
-};
-
-InputWebSocketHandler.prototype.touchDown = function (contact, point, pressure) {
+CommWebSocketHandler.prototype.touchDown = function (contact, point, pressure) {
     if (!this.banner) return;
 
     this._write(util.format(
@@ -280,7 +261,7 @@ InputWebSocketHandler.prototype.touchDown = function (contact, point, pressure) 
     ));
 };
 
-InputWebSocketHandler.prototype.touchMove = function (contact, point, pressure) {
+CommWebSocketHandler.prototype.touchMove = function (contact, point, pressure) {
     if (!this.banner) return;
 
     this._write(util.format(
@@ -292,17 +273,17 @@ InputWebSocketHandler.prototype.touchMove = function (contact, point, pressure) 
     ));
 };
 
-InputWebSocketHandler.prototype.touchUp = function (contact) {
+CommWebSocketHandler.prototype.touchUp = function (contact) {
     if (!this.banner) return;
     return this._write(util.format("u %s\n", contact));
 };
 
-InputWebSocketHandler.prototype.touchCommit = function() {
+CommWebSocketHandler.prototype.touchCommit = function() {
     return this._write("c\n");
 };
 
-InputWebSocketHandler.prototype.touchReset = function() {
+CommWebSocketHandler.prototype.touchReset = function() {
     return this._write("r\n");
 };
 
-module.exports = InputWebSocketHandler;
+module.exports = CommWebSocketHandler;

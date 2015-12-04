@@ -29,26 +29,18 @@
 var ImagePool = require("./imagepool.js");
 var rotator = require("./rotator.js");
 var ScalingService = require("./scaler.js");
+var Keyboard = require("./keyboard.js");
 
-var BLANK_IMG =
-    'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 var canvas = document.getElementById("device-screen-canvas"),
     positioner = document.getElementById("positioner"),
     input = document.getElementById("input"),
     g = canvas.getContext('2d');
 
-var wsMinicap = null;
-var wsMinitouch = new WebSocket("ws://" + window.location.host + "/minitouch", "minitouch");
-var wsEvent = new WebSocket("ws://" + window.location.host + "/events", "events");
-
-wsMinitouch.onclose = function () {
-    console.log("minitouch onclose", arguments);
-};
-
-wsMinitouch.onerror = function () {
-    console.log("minitouch onerror", arguments);
-};
+var wsDisplay = null;
+var wsComm = new WebSocket("ws://" + window.location.host + "/comm", "minitouch");
+var keyboard = new Keyboard(wsComm);
 
 var minicapReconnect = null;
 var minicapTimeout = 100;
@@ -56,10 +48,10 @@ var minicapTimeout = 100;
 function connectMinicap() {
     console.log("Connecting to minicap socket.");
 
-    wsMinicap = new WebSocket("ws://" + window.location.host + "/minicap", "minicap");
-    wsMinicap.binaryType = 'blob';
+    wsDisplay = new WebSocket("ws://" + window.location.host + "/display", "minicap");
+    wsDisplay.binaryType = 'blob';
 
-    wsMinicap.onclose = function() {
+    wsDisplay.onclose = function() {
         console.log("minicap onclose", arguments);
 
         setTimeout(function () {
@@ -70,7 +62,7 @@ function connectMinicap() {
         }, minicapTimeout += minicapTimeout * 2);
     };
 
-    wsMinicap.onerror = function() {
+    wsDisplay.onerror = function() {
         console.log("minicap onerror", arguments);
 
         setTimeout(function () {
@@ -82,14 +74,14 @@ function connectMinicap() {
         }, minicapTimeout += minicapTimeout * 2);
     };
 
-    wsMinicap.onopen = function openListener() {
+    wsDisplay.onopen = function openListener() {
         checkEnabled();
 
         minicapReconnect = null;
         minicapTimeout = 100;
     };
 
-    wsMinicap.onmessage = (function() {
+    wsDisplay.onmessage = (function() {
         var cachedScreen = {
             rotation: 0,
             bounds: {
@@ -326,7 +318,7 @@ function updateBounds() {
 }
 
 function shouldUpdateScreen() {
-    return (wsMinicap.readyState === WebSocket.OPEN);
+    return (wsDisplay.readyState === WebSocket.OPEN);
 }
 
 function checkEnabled() {
@@ -346,22 +338,33 @@ function checkEnabled() {
 }
 
 function onScreenInterestGained() {
-    if (wsMinicap.readyState === WebSocket.OPEN)
-        wsMinicap.send("size " + adjustedBoundSize.w + "x" + adjustedBoundSize.h);
+    if (wsDisplay.readyState === WebSocket.OPEN)
+        wsDisplay.send("size " + adjustedBoundSize.w + "x" + adjustedBoundSize.h);
 }
 
 function onScreenInterestAreaChanged() {
-    if (wsMinicap.readyState === WebSocket.OPEN)
-        wsMinicap.send("size " + adjustedBoundSize.w + "x" + adjustedBoundSize.h);
+    if (wsDisplay.readyState === WebSocket.OPEN)
+        wsDisplay.send("size " + adjustedBoundSize.w + "x" + adjustedBoundSize.h);
 }
 
 function onScreenInterestLost() {
-    if (wsMinicap.readyState === WebSocket.OPEN) {
-        //wsMinicap.send('off');
+    if (wsDisplay.readyState === WebSocket.OPEN) {
+        //wsDisplay.send('off');
     }
 }
 
-wsEvent.onmessage = function (msg) {
+wsComm.onopen = function () {
+    canvas.addEventListener("mousedown", minitouchMouseDown);
+    canvas.addEventListener("mousemove", minitouchMouseMove);
+    canvas.addEventListener("mouseup", minitouchMouseUp);
+    canvas.addEventListener("mouseleave", minitouchMouseUp);
+
+    input.addEventListener("keydown", keydownListener);
+    input.addEventListener("keyup", keyupListener);
+    input.addEventListener("input", inputListener);
+};
+
+wsComm.onMessage = function (msg) {
     var eventData = JSON.parse(msg.data);
 
     switch (eventData.event) {
@@ -375,46 +378,23 @@ wsEvent.onmessage = function (msg) {
     }
 };
 
-wsMinitouch.onopen = function () {
-    canvas.addEventListener("mousedown", minitouchMouseDown);
-    canvas.addEventListener("mousemove", minitouchMouseMove);
-    canvas.addEventListener("mouseup", minitouchMouseUp);
-    canvas.addEventListener("mouseleave", minitouchMouseUp);
-
-    input.addEventListener("keydown", keydownListener);
-    input.addEventListener("keyup", keyupListener);
-    input.addEventListener("input", inputListener);
-};
-
 function inputListener(e) {
-    wsMinitouch.send(JSON.stringify({
-        msg: "input.type",
-        text: input.value
-    }));
-
+    keyboard.type(input.value);
     input.value = "";
 }
 
 function keyupListener(e) {
-    if (e.keyCode === 9) e.preventDefault();
+    if (e.keyCode === 9)
+        e.preventDefault();
 
-    if (e.keyCode < String.fromCharCode('a') || e.keyCode > String.fromCharCode('z')) {
-        wsMinitouch.send(JSON.stringify({
-            msg: "input.keyup",
-            key: e.keyCode
-        }));
-    }
+    keyboard.keyUp(e.keyCode);
 }
 
 function keydownListener(e) {
-    if (e.keyCode === 9) e.preventDefault();
+    if (e.keyCode === 9)
+        e.preventDefault();
 
-    if (e.keyCode < String.fromCharCode('a') || e.keyCode > String.fromCharCode('z')) {
-        wsMinitouch.send(JSON.stringify({
-            msg: "input.keydown",
-            key: e.keyCode
-        }));
-    }
+    keyboard.keyDown(e.keyCode);
 }
 
 function minitouchMouseDown(e) {
@@ -433,8 +413,8 @@ function minitouchMouseDown(e) {
         y,
         screen.rotation);
 
-    wsMinitouch.send(JSON.stringify({
-        msg: "input.mousedown",
+    wsComm.send(JSON.stringify({
+        cmd: "mouse.down",
         contact: 0,
         point: {
             x: scaled.xP,
@@ -460,8 +440,8 @@ function minitouchMouseMove(e) {
         y,
         screen.rotation);
 
-    wsMinitouch.send(JSON.stringify({
-        msg: "input.mousemove",
+    wsComm.send(JSON.stringify({
+        cmd: "mouse.move",
         contact: 0,
         point: {
             x: scaled.xP,
@@ -487,8 +467,8 @@ function minitouchMouseUp(e) {
         y,
         screen.rotation);
 
-    wsMinitouch.send(JSON.stringify({
-        msg: "input.mouseup",
+    wsComm.send(JSON.stringify({
+        cmd: "mouse.up",
         contact: 0,
         point: {
             x: scaled.xP,

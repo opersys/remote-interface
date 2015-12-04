@@ -26,10 +26,9 @@ var path = require("path");
 var debug = require("debug")("RI");
 //require("longjohn");
 
-var ScreenWatcher = require("./commandserver.js");
+var CommandServer = require("./commandserver.js");
 var DisplayWebSocketHandler = require("./display_websocket.js");
-var InputWebSocketHandler = require("./input_websocket.js");
-var EventWebSocketHandler = require("./event_websocket.js");
+var CommWebSocketHandler = require("./comm_websocket.js");
 
 var app = express();
 
@@ -60,14 +59,14 @@ app.set("socket", argv.socket);
 debug("Listening on port %d", app.get("port"));
 
 var server = http.createServer(app);
-var wssmc = new WebSocketServer({ server: server, path: "/minicap" });
-var wssmt = new WebSocketServer({ server: server, path: "/minitouch" });
-var wsev = new WebSocketServer({ server: server, path: "/events" });
-var screenwatcher = new ScreenWatcher();
+var wssmc = new WebSocketServer({ server: server, path: "/display" });
+var wssmt = new WebSocketServer({ server: server, path: "/comm" });
 
-new DisplayWebSocketHandler(wssmc, screenwatcher);
-new InputWebSocketHandler(wssmt, screenwatcher);
-new EventWebSocketHandler(wsev, screenwatcher);
+var commandServer = new CommandServer();
+commandServer.start();
+
+new DisplayWebSocketHandler(wssmc, commandServer);
+new CommWebSocketHandler(wssmt, commandServer);
 
 server.listen(app.get("port"));
 

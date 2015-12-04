@@ -23,11 +23,13 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.*;
 import jp.co.cyberagent.stf.compat.InputManagerWrapper;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.StringTokenizer;
 
 /**
  * Tiny console program that sits around and receive notification from the window manager when
@@ -123,54 +125,66 @@ public class CommandServer {
         public void run() {
             try {
                 while (true) {
-                    String cmd, c;
-                    StringTokenizer st;
+                    String cmdStr, c;
+                    JSONObject cmdObj;
+                    JSONTokener jsonTokener;
 
-                    cmd = br.readLine();
-                    if (cmd.equals("")) return;
+                    cmdStr = br.readLine().trim();
 
-                    st = new StringTokenizer(cmd);
-                    c = st.nextToken(" ");
+                    Log.d(TAG, "COMMAND: " + cmdStr);
 
-                    Log.d(TAG, "Received command: " + cmd);
+                    // Discard empty lines in case they happen.
+                    if (cmdStr.equals("")) return;
 
-                    // Rotate command.
-                    if ("rotate".equals(c)) {
-                        int crot, rot = Surface.ROTATION_0;
+                    jsonTokener = new JSONTokener(cmdStr);
+                    try {
+                        cmdObj = (JSONObject) jsonTokener.nextValue();
 
-                        crot = Integer.parseInt(st.nextToken(" "));
+                        // Rotate command.
+                        if ("display.rotate".equals(cmdObj.get("cmd"))) {
+                            int crot, rot = Surface.ROTATION_0;
 
-                        switch (crot) {
-                            case 0:   rot = Surface.ROTATION_0;   break;
-                            case 90:  rot = Surface.ROTATION_90;  break;
-                            case 180: rot = Surface.ROTATION_180; break;
-                            case 270: rot = Surface.ROTATION_270; break;
+                            crot = cmdObj.getInt("rot");
+
+                            switch (crot) {
+                                case 0:
+                                    rot = Surface.ROTATION_0;
+                                    break;
+                                case 90:
+                                    rot = Surface.ROTATION_90;
+                                    break;
+                                case 180:
+                                    rot = Surface.ROTATION_180;
+                                    break;
+                                case 270:
+                                    rot = Surface.ROTATION_270;
+                                    break;
+                            }
+
+                            try {
+                                Log.d(TAG, "Setting rotation to " + rot);
+
+                                wm.freezeRotation(rot);
+                                wm.thawRotation();
+                            } catch (RemoteException ex) {
+                                Log.e(TAG, "Exception while trying to change rotation", ex);
+                            }
+                        } else if ("input.keyDown".equals(cmdObj.get("cmd"))) {
+                            int code = cmdObj.getInt("key");
+                            keyDown(code, 0);
+                        } else if ("input.keyUp".equals(cmdObj.get("cmd"))) {
+                            int code = cmdObj.getInt("key");
+                            keyUp(code, 0);
+                        } else if ("input.type".equals(cmdObj.get("cmd"))) {
+                            String str = cmdObj.getString("text");
+                            type(str);
                         }
-
-                        try {
-                            Log.d(TAG, "Setting rotation to " + rot);
-
-                            wm.freezeRotation(rot);
-                            wm.thawRotation();
-                        } catch (RemoteException ex) {
-                            Log.e(TAG, "Exception while trying to change rotation", ex);
+                        // Unknown command.
+                        else {
+                            Log.e(TAG, "Don't know what to do with the command line: " + cmdStr);
                         }
-                    }
-                    else if ("keydown".equals(c)) {
-                        int code = Integer.parseInt(st.nextToken(" "));
-                        keyDown(code, 0);
-                    }
-                    else if ("keyup".equals(c)) {
-                        int code = Integer.parseInt(st.nextToken(" "));
-                        keyUp(code, 0);
-                    }
-                    else if ("type".equals(c)) {
-                        String str = cmd.substring("type".length() + 1);
-                        type(str);
-                    }
-                    // Unknown command.
-                    else {
-                        Log.e(TAG, "Don't know what to do with the command line: " + cmd);
+                    } catch (JSONException ex) {
+                        Log.e(TAG, "Failed to parse command line: " + cmdStr, ex);
                     }
                 }
             } catch (IOException ex) {
@@ -197,11 +211,22 @@ public class CommandServer {
             @Override
             public void onRotationChanged(int rotation) throws RemoteException {
                 int deg;
+                JSONObject event;
 
                 deg = rotationToDegrees(rotation);
                 Log.d(TAG, "Received rotation: " + deg);
 
-                System.out.println(deg);
+                event = new JSONObject();
+
+                try {
+                    event.put("event", "rotation");
+                    event.put("rotation", deg);
+
+                } catch (JSONException ex) {
+                    Log.e(TAG, "Invalid JSON", ex);
+                }
+
+                System.out.println(event.toString());
             }
         };
 

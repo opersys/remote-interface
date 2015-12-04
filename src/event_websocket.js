@@ -19,7 +19,7 @@ var debug = require("debug")("RI.ws.event");
 var EventWebSocketHandler = function (wss, screenwatcher) {
     this.screenwatcher = screenwatcher;
     this.screenwatcher.screenWatcherRotationSignal.add(this.onScreenWatcherRotation.bind(this));
-    //this.screenwatcher.screenWatcherErrorSignal(this.onScreenWatcherError
+    //this.commandServer.screenWatcherErrorSignal(this.onScreenWatcherError
 
     wss.on("connection", this.onEventWebSocketConnected.bind(this));
 };
