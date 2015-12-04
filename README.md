@@ -18,7 +18,15 @@ An .apk launcher is being developed but you can use this project as-is by manual
 
 The runtime and the build system of this project is using [Node.JS](http://nodejs.org) so you need to have a working *node* binary in your path and a properly installed Node.JS distribution. I'm using the rather old Node.JS 0.12 for development but any version should work. A binary of Node.JS for Android will be installed by the build system.
 
-First step, make sure all Node.JS modules are installed.
+Once you have cloned the Git repository for this project, you need to also clone the *minicap* and *minitouch* Git submodules. This is done the standard way:
+
+> git submodule init
+> ...
+> git submodule update
+
+Those commands should download *minicap* and *minitouch* which you have to build individually. Those projects require you to have the [Android NDK](http://developer.android.com/tools/sdk/ndk/index.html) installed. Follow the individual build instruction for [minicap](https://github.com/openstf/minicap) and [minitouch](https://github.com/openstf/minitouch).
+
+Once *minicap* and *minitouch* are built in their respective directories, you can get back to building Remote Interface. First, make sure all the require Node.JS modules are installed.
 
 > $ npm install
 
