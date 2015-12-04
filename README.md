@@ -21,7 +21,7 @@ The runtime and the build system of this project is using [Node.JS](http://nodej
 Once you have cloned the Git repository for this project, you need to also clone the *minicap* and *minitouch* Git submodules. This is done the standard way:
 
 > git submodule init
-> ...
+
 > git submodule update
 
 Those commands should download *minicap* and *minitouch* which you have to build individually. Those projects require you to have the [Android NDK](http://developer.android.com/tools/sdk/ndk/index.html) installed. Follow the individual build instruction for [minicap](https://github.com/openstf/minicap) and [minitouch](https://github.com/openstf/minitouch).
