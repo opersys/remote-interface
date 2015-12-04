@@ -1,0 +1,6 @@
+[submodule "minicap"]
+	path = minicap
+	url = https://github.com/openstf/minicap
+[submodule "minitouch"]
+	path = minitouch
+	url = https://github.com/openstf/minitouch
