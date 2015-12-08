@@ -124,6 +124,8 @@ DisplayWebSocketHandler.prototype.onScreenWatcherRotation = function (rot) {
 
 DisplayWebSocketHandler.prototype.onDisplayWebSocketClose = function () {
     debug("Web socket disconnected");
+
+    this.ws = null;
 };
 
 DisplayWebSocketHandler.prototype.onDisplayWebSocketMessage = function (data) {
@@ -274,6 +276,7 @@ DisplayWebSocketHandler.prototype._onStreamTryRead = function tryRead() {
         }
     } catch (e) {
         debug("Read() returned an error: " + e);
+        if (!this.ws) this._onStreamError();
     }
 };
 
