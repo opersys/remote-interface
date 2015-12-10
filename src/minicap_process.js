@@ -38,12 +38,8 @@ Minicap.prototype.socketName = function () {
     return this._socketName;
 };
 
-Minicap.prototype.start = function (initialSize, currentSize, currentRotation) {
+Minicap.prototype._arguments = function (initialSize, currentSize, currentRotation, argsCallback) {
     var self = this;
-
-    DaemonProcess.prototype.start.apply(this);
-
-    this._socketName = uuid.v1();
 
     props.getprops(this.props, function (err, props) {
         if (err) throw err;
@@ -71,7 +67,29 @@ Minicap.prototype.start = function (initialSize, currentSize, currentRotation) {
 
         exec = path.join(process.cwd(), "_bin", "minicap", abi, bin);
 
-        self._start(exec, args);
+        argsCallback(exec, args);
+    });
+};
+
+Minicap.prototype.startTest = function (initialSize, currentSize, currentRotation) {
+    var self = this;
+
+    DaemonProcess.prototype.start.apply(this);
+
+    self._arguments(initialSize, currentSize, currentRotation, function (exec, args) {
+        self._start(exec, args.concat("-t"));
+    });
+};
+
+Minicap.prototype.startCapture = function (initialSize, currentSize, currentRotation) {
+    var self = this;
+
+    DaemonProcess.prototype.start.apply(this);
+
+    this._socketName = uuid.v1();
+
+    self._arguments(initialSize, currentSize, currentRotation, function (exec, args) {
+        self._start(exec, args.concat(["-n", self._socketName]));
     });
 };
 

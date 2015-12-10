@@ -22,55 +22,16 @@ var abs = require("abstract-socket");
 var util = require("util");
 var cp = require("child_process");
 var uuid = require("uuid");
-var Binder = require("jsbinder");
 var path = require("path");
 
+var Display = require("./display_info.js");
 var props = require("./props.js");
 var Minicap = require("./minicap_process.js");
 var MinicapHelper = require("./daemon_process_helpers");
 
-// JSBINDER HELPER FUNCTIONS
-
-function getDisplaySize(wm, transNo, dispNo) {
-    var data = new Binder.Parcel();
-    var reply = new Binder.Parcel();
-    var p = {};
-
-    data.writeInterfaceToken("android.view.IWindowManager");
-    data.writeInt32(dispNo);
-
-    reply = wm.transact(transNo, data, reply, 0);
-
-    reply.readExceptionCode();
-    var n = reply.readInt32();
-
-    if (n < 1) throw "Expected '0' or '1' return values, got: " + n;
-
-    if (n) {
-        p.x = reply.readInt32();
-        p.y = reply.readInt32();
-    } else
-        throw "no return value";
-
-    return p;
-}
-
-function getInitialDisplaySize(wm, dispNo) {
-    return getDisplaySize(wm, 6, dispNo);
-}
-
-function getBaseDisplaySize(wm, dispNo) {
-    return getDisplaySize(wm, 7, dispNo);
-}
-
-// END JSBINDER HELPER
-
 var DisplayWebSocketHandler = function (wss, screenwatcher) {
-    var sm = new Binder.ServiceManager();
-    var wm = sm.getService("window");
-
-    this.initialSize = getInitialDisplaySize(wm, 0);
-    this.baseSize = getBaseDisplaySize(wm, 0);
+    this.initialSize = Display.getInitialDisplaySize(0);
+    this.baseSize = Display.getBaseDisplaySize(0);
     this.currentSize = this.baseSize;
     this.currentRotation = 0;
 
@@ -143,7 +104,7 @@ DisplayWebSocketHandler.prototype.onDisplayWebSocketMessage = function (data) {
                 //this.minicap.stop();
                 break;
 
-            case 'size':
+            case "size":
                 this.geom({x: +match[3], y: +match[4]});
         }
     }
@@ -230,9 +191,17 @@ DisplayWebSocketHandler.prototype._onStreamTryRead = function tryRead() {
                     cursor += 1;
                     this.readBannerBytes += 1;
 
-                    // FIXME: Not sure what this is.
                     if (this.readBannerBytes === this.bannerLength) {
-                        debug('banner ' + util.inspect(this.banner));
+                        this.ws.send(JSON.stringify({
+                            event: "info",
+                            data: {
+                                realWidth: this.banner.realWidth,
+                                realHeight: this.banner.realHeight,
+                                virtualWidth: this.banner.virtualWidth,
+                                virtualHeight: this.banner.virtualHeight,
+                                rotation: this.banner.orientation
+                            }
+                        }));
                     }
                 }
                 else if (this.readFrameBytes < 4) {
@@ -339,7 +308,7 @@ DisplayWebSocketHandler.prototype._onMinicapStopping = function () {
 
 DisplayWebSocketHandler.prototype._startMinicap = function () {
     this._minicap = new Minicap();
-    this._minicap.start(this.initialSize, this.currentSize, this.currentRotation);
+    this._minicap.startCapture(this.initialSize, this.currentSize, this.currentRotation);
 
     this._startedSignalHandler = this._onMinicapStarted.bind(this);
     this._stoppingSignalHandler = this._onMinicapStopping.bind(this);

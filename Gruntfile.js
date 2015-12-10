@@ -85,11 +85,16 @@ module.exports = function (grunt) {
         };
 
         webpack_config["dist_" + arch] = {
-            entry: "./src/js/main.js",
-            output: {
-                filename: mkdist("public", "js", "bundle.js")
+            context: path.join(__dirname, "src", "js"),
+            entry: {
+                display: "./display/main.js",
+                main: "./index/main.js"
             },
-
+            output: {
+                filename: mkdist("public", "js", "b_[name].js"),
+                libraryTarget: "var",
+                library: "JS"
+            }
         };
 
         handlebars_config["dist_" + arch] = {

@@ -1,62 +1,37 @@
 <!doctype html>
+<html xmlns:javascript="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Opersys Remote Interface</title>
 
-<style>
-    canvas.screen {
-        position: absolute;
-        width: 100%;
-        height: auto;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        margin: auto;
-
-        /*pointer-events: none;*/ /* MUST HAVE or touch coordinates will be off */
-        transition: -webkit-transform 250ms ease-in-out;
-        -webkit-transform-origin: 50% 50%;
-        transform-origin: 50% 50%;
-        -webkit-transform: rotate(0deg);
-        transform: rotate(0deg);
-    }
-
-    /*.portrait*/ #positioner {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-    }
-
-    /*.portrait*/ canvas.screen {
-        width: auto;
-        height: 80%;
-    }
-
-    .rotated.letterboxed #positioner {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        margin: auto;
-        width: 100%;
-        padding-top: 100%;
-        height: 0;
-    }
-
-    #input {
-        width: 0;
-        opacity: 0;
-    }
-</style>
+    <script language="javascript" src="js/b_main.js"></script>
+    <script language="javascript">
+        window.onload = function () {
+            JS.onLoad();
+        }
+    </script>
+</head>
 
 <body>
 
-<div id="positioner">
-    <input id="input" type="password" tabindex="40" accesskey="C" autocorrect="off" autocapitalize="off">
-    <canvas class="screen" id="device-screen-canvas" style="border: 1px solid red;"></canvas>
+<div id="info-manufacturer">
+
+</div>
+
+<div id="info-abi">
+
+</div>
+
+<div id="info-model">
+
+</div>
+
+<div id="info-display">
+
+</div>
+
+<div id="display">
+    <a href="javascript:JS.openDisplay()">OPEN THE FUCKING DISPLAY</a>
 </div>
 
 </body>
-
-<script lang="javascript" src="js/bundle.js"></script>
+</html>

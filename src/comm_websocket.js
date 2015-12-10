@@ -24,6 +24,7 @@ var path = require("path");
 var signals = require("signals");
 var uuid = require("uuid");
 
+var Display = require("./display_info.js");
 var props = require("./props.js");
 var Minitouch = require("./minitouch_process.js");
 var MinitouchHelper = require("./daemon_process_helpers");
@@ -42,6 +43,8 @@ var CommWebSocketHandler = function (wss, commandServer) {
 };
 
 CommWebSocketHandler.prototype.onCommWebsocketConnect = function (ws) {
+    var self = this;
+
     debug("Web socket connected");
 
     this.ws = ws;
@@ -51,6 +54,38 @@ CommWebSocketHandler.prototype.onCommWebsocketConnect = function (ws) {
 
     ws.on("close", this.onCommWebsocketClose.bind(this));
     ws.on("message", this.onCommWebsocketMessage.bind(this));
+
+    props.getprops([
+        "ro.product.model",
+        "ro.product.cpu.abi",
+        "ro.product.manufacturer"],
+
+        function (err, props) {
+            if (err) debug("Getprop error: ", err);
+
+            if (!err) {
+                self.ws.send(JSON.stringify({
+                    "event": "info",
+                    "data": {
+                        "displaySize": Display.getInitialDisplaySize(0),
+                        "rotation": Display.getRotation(),
+                        "model": props["ro.product.model"],
+                        "abi": props["ro.product.cpu.abi"],
+                        "manufacturer": props["ro.product.manufacturer"]
+                    }
+                }));
+            } else {
+                self.ws.send(JSON.stringify({
+                    "event": "info",
+                    "data": {
+                        "model": null,
+                        "abi": null,
+                        "manufacturer": null
+                    }
+                }));
+            }
+        }
+    );
 };
 
 CommWebSocketHandler.prototype.onCommWebsocketClose = function () {
@@ -58,8 +93,6 @@ CommWebSocketHandler.prototype.onCommWebsocketClose = function () {
 };
 
 CommWebSocketHandler.prototype.onScreenWatcherRotation = function (rotation) {
-    debug("Device rotated, restarting minitouch");
-
     // Send the rotation event.
     this.ws.send(JSON.stringify({event: "rotation", data: rotation}));
 };
