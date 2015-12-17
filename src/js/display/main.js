@@ -32,48 +32,97 @@ var ImagePool = require("./imagepool.js");
 var rotator = require("./rotator.js");
 var ScalingService = require("./scaler.js");
 var Keyboard = require("./keyboard.js");
-var Comm = require("../common/comm.js");
-var Display = require("../common/display.js");
 
 var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
-var canvas = document.getElementById("device-screen-canvas"),
-    positioner = document.getElementById("positioner"),
-    input = document.getElementById("input"),
-    g = canvas.getContext('2d');
+var cssTransform = "transform";
+var URL = window.URL || window.webkitURL;
 
 // RELATIVELY CLEANER CODE STARTS HERE.
 
-var comm = new Comm();
-var disp = new Display();
-var keyboard = new Keyboard(comm);
+var DisplayWindow = function (comm, disp) {
+    console.log("Creating new display object: " + comm + ", " + disp);
 
-comm.onRotation.add(function (angle) {
-    console.log("Device rotation: " + angle);
+    function vendorBackingStorePixelRatio(g) {
+        return g.webkitBackingStorePixelRatio ||
+            g.mozBackingStorePixelRatio ||
+            g.msBackingStorePixelRatio ||
+            g.oBackingStorePixelRatio ||
+            g.backingStorePixelRatio || 1
+    }
 
-    device.display.rotation = angle;
-});
+    this._commSock = comm;
+    this._dispSock = disp;
+    this._keyboard = new Keyboard(comm);
 
-comm.onOpen.add(function () {
-    canvas.addEventListener("mousedown", mouseDown);
-    canvas.addEventListener("mousemove", mouseMove);
-    canvas.addEventListener("mouseup", mouseUp);
-    canvas.addEventListener("mouseleave", mouseUp);
+    this._canvas = document.getElementById("device-screen-canvas");
+    this._positioner = document.getElementById("positioner");
+    this._input = document.getElementById("input");
+    this._g = this._canvas.getContext('2d');
 
-    input.addEventListener("keydown", keydownListener);
-    input.addEventListener("keyup", keyupListener);
-    input.addEventListener("input", inputListener);
-});
+    this._devicePixelRatio = window.devicePixelRatio || 1;
+    this._backingStoreRatio = vendorBackingStorePixelRatio(this._g);
+    this._frontBackRatio = this._devicePixelRatio / this._backingStoreRatio;
 
-comm.onClose.add(function () {
-    // TODO: Display a warning overlay here.
-});
+    this._adjustedBoundSize = null;
+    this._cachedEnabled = false;
 
-disp.onOpen.add(function () {
-    checkEnabled();
-});
+    this._options = {
+        autoScaleForRetina: true,
+        density: Math.max(1, Math.min(1.5, devicePixelRatio || 1)),
+        minscale: 0.36
+    };
 
-disp.onFrame.add((function() {
+    this._device = {
+        display: {
+            width: 1200,
+            height: 1920,
+            rotation: 0
+        }
+    };
+
+    this._screen = {rotation: 0, bounds: {x: 0, y: 0, w: 0, h: 0}};
+
+    this._canvasAspect = 1;
+    this._parentAspect = 1;
+
+    this._scaler = new ScalingService(
+        this._device.display.width,
+        this._device.display.height
+    );
+
+    this._commSock.onRotation.add(this._onCommSocketRotation.bind(this));
+    this._dispSock.onFrame.add(this._onFrame.bind(this));
+
+    this._canvas.addEventListener("mousedown", this._onMouseDown.bind(this));
+    this._canvas.addEventListener("mousemove", this._onMouseMove.bind(this));
+    this._canvas.addEventListener("mouseup", this._onMouseUp.bind(this));
+    this._canvas.addEventListener("mouseleave", this._onMouseUp.bind(this));
+
+    this._input.addEventListener("keydown", this._onKeydownListener(this));
+    this._input.addEventListener("keyup", this._onKeyupListener(this));
+    this._input.addEventListener("input", this._onInputListener(this));
+
+    this._checkEnabled();
+};
+
+DisplayWindow.prototype._checkEnabled = function () {
+    var newEnabled = this._dispSock.shouldUpdateScreen();
+
+    if (newEnabled === this._cachedEnabled) {
+        this.updateBounds();
+    } else if (newEnabled) {
+        this.updateBounds();
+        this._onScreenInterestGained()
+    } else {
+        g.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        this._onScreenInterestLost()
+    }
+
+    this._cachedEnabled = newEnabled;
+};
+
+DisplayWindow.prototype._onFrame = (function() {
     var cachedScreen = {
         rotation: 0,
         bounds: {
@@ -90,41 +139,41 @@ disp.onFrame.add((function() {
         alwaysUpright = true,
         imagePool = new ImagePool(10);
 
-    function hasImageAreaChanged(img) {
-        return cachedScreen.bounds.w !== screen.bounds.w ||
-            cachedScreen.bounds.h !== screen.bounds.h ||
+    function hasImageAreaChanged(target, img) {
+        return cachedScreen.bounds.w !== target._screen.bounds.w ||
+            cachedScreen.bounds.h !== target._screen.bounds.h ||
             cachedImageWidth !== img.width ||
             cachedImageHeight !== img.height ||
-            cachedScreen.rotation !== screen.rotation
+            cachedScreen.rotation !== target._screen.rotation
     }
 
-    function isRotated() {
-        return screen.rotation === 90 || screen.rotation === 270
+    function isRotated(target) {
+        return target._screen.rotation === 90 || target._screen.rotation === 270
     }
 
-    function updateImageArea(img) {
-        if (!hasImageAreaChanged(img)) return;
+    function updateImageArea(target, img) {
+        if (!hasImageAreaChanged(target, img)) return;
 
         cachedImageWidth = img.width;
         cachedImageHeight = img.height;
 
-        canvas.width = cachedImageWidth;
-        canvas.height = cachedImageHeight;
+        target._canvas.width = cachedImageWidth;
+        target._canvas.height = cachedImageHeight;
 
-        cssRotation += rotator(cachedScreen.rotation, screen.rotation);
+        cssRotation += rotator(cachedScreen.rotation, target._screen.rotation);
 
-        canvas.style[cssTransform] = 'rotate(' + cssRotation + 'deg)';
+        target._canvas.style[cssTransform] = 'rotate(' + cssRotation + 'deg)';
 
-        cachedScreen.bounds.h = screen.bounds.h;
-        cachedScreen.bounds.w = screen.bounds.w;
-        cachedScreen.rotation = screen.rotation;
+        cachedScreen.bounds.h = target._screen.bounds.h;
+        cachedScreen.bounds.w = target._screen.bounds.w;
+        cachedScreen.rotation = target._screen.rotation;
 
-        if (isRotated()) {
-            canvasAspect = img.height / img.width;
+        if (isRotated(target)) {
+            target._canvasAspect = img.height / img.width;
             //root.classList.add('rotated')
         }
         else {
-            canvasAspect = img.width / img.height;
+            target._canvasAspect = img.width / img.height;
             //root.classList.remove('rotated')
         }
 
@@ -132,18 +181,20 @@ disp.onFrame.add((function() {
             // If the screen image is always in upright position (but we
             // still want the rotation animation), we need to cancel out
             // the rotation by using another rotation.
-            positioner.style[cssTransform] = 'rotate(' + -cssRotation + 'deg)'
+            target._positioner.style[cssTransform] = 'rotate(' + -cssRotation + 'deg)'
         }
 
-        maybeFlipLetterbox();
+        maybeFlipLetterbox(target);
     }
 
-    function maybeFlipLetterbox() {
-        positioner.classList.toggle("letterboxed", parentAspect < canvasAspect);
+    function maybeFlipLetterbox(target) {
+        target._positioner.classList.toggle("letterboxed", target._parentAspect < target._canvasAspect);
     }
 
     return function messageListener(frame) {
-        screen.rotation = device.display.rotation;
+        var self = this;
+
+        this._screen.rotation = this._device.display.rotation;
 
         var blob = new Blob([frame], {
             type: 'image/jpeg'
@@ -152,9 +203,9 @@ disp.onFrame.add((function() {
         var img = imagePool.next();
 
         img.onload = function() {
-            updateImageArea(this);
+            updateImageArea(self, img);
 
-            g.drawImage(img, 0, 0, img.width, img.height);
+            self._g.drawImage(img, 0, 0, img.width, img.height);
 
             // Try to forcefully clean everything to get rid of memory
             // leaks. Note that despite this effort, Chrome will still
@@ -188,181 +239,111 @@ disp.onFrame.add((function() {
         var url = URL.createObjectURL(blob);
         img.src = url
     };
-})());
+})();
 
-disp.onClose.add(function () {
+DisplayWindow.prototype._onCommSocketRotation = function (angle) {
+    this._device.display.rotation = angle;
+};
 
-});
+DisplayWindow.prototype._onInputListener = function () {
+    this._commSock.type(this._input.value);
+    this._input.value = "";
+};
 
-function inputListener(e) {
-    keyboard.type(input.value);
-    input.value = "";
-}
-
-function keyupListener(e) {
+DisplayWindow.prototype._onKeyupListener = function (e) {
     if (e.keyCode === 9)
         e.preventDefault();
 
-    keyboard.keyUp(e.keyCode);
-}
+    this._keyboard.keyUp(e.keyCode);
+};
 
-function keydownListener(e) {
+DisplayWindow.prototype._onKeydownListener = function (e) {
     if (e.keyCode === 9)
         e.preventDefault();
 
-    keyboard.keyDown(e.keyCode);
-}
+    this._keyboard.keyDown(e.keyCode);
+};
 
-function mouseDown(e) {
+DisplayWindow.prototype._onMouseDown = function (e) {
     e.preventDefault();
 
-    input.focus();
+    this._input.focus();
 
-    calculateBounds();
+    this._calculateBounds();
 
-    var x = e.pageX - screen.bounds.x;
-    var y = e.pageY - screen.bounds.y;
-    var scaled = scaler.coords(
-        screen.bounds.w,
-        screen.bounds.h,
+    var x = e.pageX - this._screen.bounds.x;
+    var y = e.pageY - this._screen.bounds.y;
+    var scaled = this._scaler.coords(
+        this._screen.bounds.w,
+        this._screen.bounds.h,
         x,
         y,
-        screen.rotation);
+        this._screen.rotation);
 
-    comm.mouseDown({
+    this._commSock.mouseDown({
         x: scaled.xP,
         y: scaled.yP
     });
-}
+};
 
-function mouseMove(e) {
+DisplayWindow.prototype._onMouseMove = function (e) {
     e.preventDefault();
 
-    input.focus();
+    this._input.focus();
 
-    calculateBounds();
+    this._calculateBounds();
 
-    var x = e.pageX - screen.bounds.x;
-    var y = e.pageY - screen.bounds.y;
-    var scaled = scaler.coords(
-        screen.bounds.w,
-        screen.bounds.h,
+    var x = e.pageX - this._screen.bounds.x;
+    var y = e.pageY - this._screen.bounds.y;
+    var scaled = this._scaler.coords(
+        this._screen.bounds.w,
+        this._screen.bounds.h,
         x,
         y,
-        screen.rotation);
+        this._screen.rotation);
 
-    comm.mouseMove({
+    this._commSock.mouseMove({
         x: scaled.xP,
         y: scaled.yP
     });
-}
+};
 
-function mouseUp(e) {
+DisplayWindow.prototype._onMouseUp = function (e) {
     e.preventDefault();
 
-    input.focus();
+    this._input.focus();
 
-    calculateBounds();
+    this._calculateBounds();
 
-    var x = e.pageX - screen.bounds.x;
-    var y = e.pageY - screen.bounds.y;
-    var scaled = scaler.coords(
-        screen.bounds.w,
-        screen.bounds.h,
+    var x = e.pageX - this._screen.bounds.x;
+    var y = e.pageY - this._screen.bounds.y;
+    var scaled = this._scaler.coords(
+        this._screen.bounds.w,
+        this._screen.bounds.h,
         x,
         y,
-        screen.rotation);
+        this._screen.rotation);
 
-    comm.mouseUp({
+    this._commSock.mouseUp({
         x: scaled.xP,
         y: scaled.yP
     });
-}
-
-// START OF MESSY CODE
-
-var minicapReconnect = null;
-var minicapTimeout = 100;
-
-window.onresize = _.debounce(updateBounds, 1000);
-
-var cssTransform = "transform";
-var URL = window.URL || window.webkitURL;
-
-var canvasAspect = 1;
-var parentAspect = 1;
-
-var screen = {
-    rotation: 0,
-    bounds: {
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 0
-    }
 };
 
-var device = {
-    display: {
-        width: 1200,
-        height: 1920,
-        rotation: 0
-    }
-};
+DisplayWindow.prototype.updateBounds = function () {
+    var self = this;
 
-function calculateBounds() {
-    var el = canvas;
-
-    screen.bounds.w = el.offsetWidth;
-    screen.bounds.h = el.offsetHeight;
-    screen.bounds.x = 0;
-    screen.bounds.y = 0;
-
-    while (el.offsetParent) {
-        screen.bounds.x += el.offsetLeft;
-        screen.bounds.y += el.offsetTop;
-        el = el.offsetParent
-    }
-}
-
-var scaler = new ScalingService(
-    device.display.width,
-    device.display.height
-);
-
-function vendorBackingStorePixelRatio(g) {
-    return g.webkitBackingStorePixelRatio ||
-        g.mozBackingStorePixelRatio ||
-        g.msBackingStorePixelRatio ||
-        g.oBackingStorePixelRatio ||
-        g.backingStorePixelRatio || 1
-}
-
-var devicePixelRatio = window.devicePixelRatio || 1;
-var backingStoreRatio = vendorBackingStorePixelRatio(g);
-var frontBackRatio = devicePixelRatio / backingStoreRatio;
-
-var options = {
-    autoScaleForRetina: true,
-    density: Math.max(1, Math.min(1.5, devicePixelRatio || 1)),
-    minscale: 0.36
-};
-
-var adjustedBoundSize;
-var cachedEnabled = false;
-
-function updateBounds() {
     function adjustBoundedSize(w, h) {
-        var sw = w * options.density,
-            sh = h * options.density,
+        var sw = w * self._options.density,
+            sh = h * self._options.density,
             f;
 
-        if (sw < (f = device.display.width * options.minscale)) {
+        if (sw < (f = self._device.display.width * self._options.minscale)) {
             sw *= f / sw;
             sh *= f / sh;
         }
 
-        if (sh < (f = device.display.height * options.minscale)) {
+        if (sh < (f = self._device.display.height * self._options.minscale)) {
             sw *= f / sw;
             sh *= f / sh;
         }
@@ -373,16 +354,14 @@ function updateBounds() {
         }
     }
 
-    /*var w = screen.bounds.w = canvas.offsetWidth;
-    var h = screen.bounds.h = canvas.offsetHeight;*/
-    var w = screen.bounds.w = window.innerWidth;
-    var h = screen.bounds.h = window.innerHeight;
+    var w = this._screen.bounds.w = window.innerWidth;
+    var h = this._screen.bounds.h = window.innerHeight;
 
     if (!w || !h)
         throw "Unable to read bounds; container must have dimensions";
 
     var newAdjustedBoundSize = (function() {
-        switch (screen.rotation) {
+        switch (self._screen.rotation) {
             case 90:
             case 270:
                 return adjustBoundedSize(h, w);
@@ -394,39 +373,43 @@ function updateBounds() {
         }
     })();
 
-    if (!adjustedBoundSize
-        || newAdjustedBoundSize.w !== adjustedBoundSize.w
-        || newAdjustedBoundSize.h !== adjustedBoundSize.h) {
-        adjustedBoundSize = newAdjustedBoundSize;
-        onScreenInterestAreaChanged();
+    if (!this._adjustedBoundSize
+        || newAdjustedBoundSize.w !== this._adjustedBoundSize.w
+        || newAdjustedBoundSize.h !== this._adjustedBoundSize.h) {
+        this._adjustedBoundSize = newAdjustedBoundSize;
+        this._onScreenInterestAreaChanged();
     }
-}
+};
 
-function checkEnabled() {
-    var newEnabled = disp.shouldUpdateScreen();
+DisplayWindow.prototype._calculateBounds = function () {
+    var el = this._canvas;
 
-    if (newEnabled === cachedEnabled) {
-        updateBounds();
-    } else if (newEnabled) {
-        updateBounds();
-        onScreenInterestGained()
-    } else {
-        g.clearRect(0, 0, canvas.width, canvas.height);
-        onScreenInterestLost()
+    this._screen.bounds.w = el.offsetWidth;
+    this._screen.bounds.h = el.offsetHeight;
+    this._screen.bounds.x = 0;
+    this._screen.bounds.y = 0;
+
+    while (el.offsetParent) {
+        this._screen.bounds.x += el.offsetLeft;
+        this._screen.bounds.y += el.offsetTop;
+        el = el.offsetParent
     }
+};
 
-    cachedEnabled = newEnabled;
-}
+DisplayWindow.prototype._onScreenInterestGained = function () {
+    this._dispSock.geom(this._adjustedBoundSize.w, this._adjustedBoundSize.h);
+};
 
-function onScreenInterestGained() {
-    //wsDisplay.send("size " + adjustedBoundSize.w + "x" + adjustedBoundSize.h);
-    disp.geom(adjustedBoundSize.w, adjustedBoundSize.h);
-}
+DisplayWindow.prototype._onScreenInterestAreaChanged = function () {
+    this._dispSock.geom(this._adjustedBoundSize.w, this._adjustedBoundSize.h);
+};
 
-function onScreenInterestAreaChanged() {
-    //wsDisplay.send("size " + adjustedBoundSize.w + "x" + adjustedBoundSize.h);
-    disp.geom(adjustedBoundSize.w, adjustedBoundSize.h);
-}
+DisplayWindow.prototype._onScreenInterestLost = function () {
+};
 
-function onScreenInterestLost() {
-}
+// START OF MESSY CODE
+
+module.exports.runDisplay = function (comm, disp) {
+    window._dispObject = new DisplayWindow(comm, disp);
+    window.onresize = _.debounce(window._dispObject.updateBounds.bind(this), 1000);
+};

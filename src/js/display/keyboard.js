@@ -297,12 +297,6 @@ function keySender(type, fixedKey) {
     }
 }
 
-Keyboard.prototype.type = function(text) {
-    //
-    // this._ws.send(JSON.stringify({cmd: "input.type", text: text}));
-    comm.type(text);
-};
-
 Keyboard.prototype.keyDown  = keySender('input.keyDown');
 Keyboard.prototype.keyUp    = keySender('input.keyUp');
 Keyboard.prototype.keyPress = keySender('input.keyPress');

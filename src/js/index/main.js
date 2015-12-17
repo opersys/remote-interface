@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-var Comm = require("../common/comm.js");
-var Display = require("../common/display.js");
+var CommSocket = require("../common/comm_socket.js");
+var DisplaySocket = require("../common/display_socket.js");
 
 var devicePixelRatio = window.devicePixelRatio || 1;
 var density = Math.max(1, Math.min(1.5, devicePixelRatio || 1));
@@ -69,7 +69,7 @@ function onCommInfo(info) {
 
     ws = getWindowSize(info.displaySize.x, info.displaySize.y, info.rotation);
 
-    disp.geom(ws.w, ws.h);
+    window.disp.geom(ws.w, ws.h);
 }
 
 function onDisplayInfo(info) {
@@ -78,19 +78,19 @@ function onDisplayInfo(info) {
     ws.h = info.virtualHeight;
 }
 
-function onLoad() {
-    comm = new Comm();
-    comm.onInfo.add(onCommInfo);
+module.exports.onLoad = function () {
+    window.comm = new CommSocket();
+    window.comm.onInfo.add(onCommInfo);
 
-    disp = new Display();
-    disp.onInfo.add(onDisplayInfo);
-}
+    window.disp = new DisplaySocket();
+    window.disp.onInfo.add(onDisplayInfo);
+};
 
-function openDisplay() {
-    window.open("display.html", "Remote Display", "menubar=no,status=no,width=" + ws.w + ",height=" + ws.h);
-}
+module.exports.openDisplay = function () {
+    var parent = window;
+    var win = window.open("display.html", "Remote Display", "menubar=no,status=no,width=" + ws.w + ",height=" + ws.h);
 
-module.exports = {
-    openDisplay: openDisplay,
-    onLoad: onLoad
+    win.addEventListener("load", function () {
+        win.JS.runDisplay(parent.comm, parent.disp);
+    });
 };

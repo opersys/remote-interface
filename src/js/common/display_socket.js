@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
+/*
+ * This wraps the basic functionality of the display websocket.
+ */
+
 var signals = require("signals");
 
 var RETRY_COUNT = 5;
 
-var Display = function (initWidth, initHeight) {
+var DisplaySocket = function () {
     this.onOpen = new signals.Signal();
     this.onClose = new signals.Signal();
     this.onFrame = new signals.Signal();
@@ -30,7 +34,7 @@ var Display = function (initWidth, initHeight) {
     this._connect();
 };
 
-Display.prototype._connect = function () {
+DisplaySocket.prototype._connect = function () {
     this._ws = new WebSocket("ws://" + window.location.host + "/display", "minicap");
     this._ws.binaryType = 'blob';
 
@@ -40,10 +44,11 @@ Display.prototype._connect = function () {
     this._ws.onclose = this._onClose.bind(this);
 };
 
-Display.prototype._onMessage = function (msg) {
-    if (msg.data instanceof Blob)
+DisplaySocket.prototype._onMessage = function (msg) {
+    if (msg.data instanceof Blob) {
+        console.log("Received display frame");
         this.onFrame.dispatch(msg.data);
-    else {
+    } else {
         var eventData = JSON.parse(msg.data);
 
         switch (eventData.event) {
@@ -57,13 +62,13 @@ Display.prototype._onMessage = function (msg) {
     }
 };
 
-Display.prototype._onOpen = function () {
+DisplaySocket.prototype._onOpen = function () {
     this._retryCount = RETRY_COUNT;
     this._ws.onmessage = this._onMessage.bind(this);
     this.onOpen.dispatch();
 };
 
-Display.prototype._onClose = function () {
+DisplaySocket.prototype._onClose = function () {
     if (!this._expectClose || this._retryCount == 0) {
         this.onClose.dispatch();
     }
@@ -71,15 +76,18 @@ Display.prototype._onClose = function () {
     this._retryCount--;
 };
 
-Display.prototype.shouldUpdateScreen = function () { 
+DisplaySocket.prototype.shouldUpdateScreen = function () { 
     return this._ws.readyState === WebSocket.OPEN;
 };
 
-Display.prototype.geom = function (w, h) {
+/*
+ * It is important to set a geometry because we can't start "minicap" until this is set.
+ */
+DisplaySocket.prototype.geom = function (w, h) {
     if (this._ws.readyState === WebSocket.OPEN) {
         this._expectClose = true;
         this._ws.send("size " + w + "x" + h);
     }
 };
 
-module.exports = Display;
+module.exports = DisplaySocket;

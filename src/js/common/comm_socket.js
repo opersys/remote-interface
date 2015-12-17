@@ -16,7 +16,7 @@
 
 var signals = require("signals");
 
-var Comm = function () {
+var CommSocket = function () {
     this.onOpen = new signals.Signal();
     this.onClose = new signals.Signal();
     this.onRotation = new signals.Signal();
@@ -27,7 +27,7 @@ var Comm = function () {
     this._ws.onclose = this._onClose.bind(this);
 };
 
-Comm.prototype._onMessage = function (msg) {
+CommSocket.prototype._onMessage = function (msg) {
     var eventData = JSON.parse(msg.data);
 
     switch (eventData.event) {
@@ -44,16 +44,16 @@ Comm.prototype._onMessage = function (msg) {
     }
 };
 
-Comm.prototype._onOpen = function () {
+CommSocket.prototype._onOpen = function () {
     this._ws.onmessage = this._onMessage.bind(this);
     this.onOpen.dispatch();
 };
 
-Comm.prototype._onClose = function () {
+CommSocket.prototype._onClose = function () {
     this.onClose.dispatch();
 };
 
-Comm.prototype.mouseDown = function (point) {
+CommSocket.prototype.mouseDown = function (point) {
     this._ws.send(JSON.stringify({
         cmd: "mouse.down",
         contact: 0,
@@ -62,7 +62,7 @@ Comm.prototype.mouseDown = function (point) {
     }));
 };
 
-Comm.prototype.mouseUp = function (point) {
+CommSocket.prototype.mouseUp = function (point) {
     this._ws.send(JSON.stringify({
         cmd: "mouse.up",
         contact: 0,
@@ -71,7 +71,7 @@ Comm.prototype.mouseUp = function (point) {
     }));
 };
 
-Comm.prototype.mouseMove = function (point) {
+CommSocket.prototype.mouseMove = function (point) {
     this._ws.send(JSON.stringify({
         cmd: "mouse.move",
         contact: 0,
@@ -80,11 +80,11 @@ Comm.prototype.mouseMove = function (point) {
     }));
 };
 
-Comm.prototype.type = function(text) {
+CommSocket.prototype.type = function(text) {
     this._ws.send(JSON.stringify({
         cmd: "input.type",
         text: text
     }));
 };
 
-module.exports = Comm;
+module.exports = CommSocket;
