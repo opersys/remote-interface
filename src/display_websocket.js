@@ -65,12 +65,28 @@ DisplayWebSocketHandler.prototype._clearBanner = function () {
     this.readBannerBytes = 0;
 };
 
+DisplayWebSocketHandler.prototype._sendBannerInfo = function () {
+    this.ws.send(JSON.stringify({
+        event: "info",
+        data: {
+            realWidth: this.banner.realWidth,
+            realHeight: this.banner.realHeight,
+            virtualWidth: this.banner.virtualWidth,
+            virtualHeight: this.banner.virtualHeight,
+            rotation: this.banner.orientation
+        }
+    }));
+};
+
 DisplayWebSocketHandler.prototype.onDisplayWebSocketConnect = function (ws) {
     debug("Web socket connected");
 
     this.ws = ws;
 
     this._connectStreams();
+
+    if (this._minicap)
+        this._sendBannerInfo();
 
     ws.on("close", this.onDisplayWebSocketClose.bind(this));
     ws.on("message", this.onDisplayWebSocketMessage.bind(this));
@@ -299,6 +315,9 @@ DisplayWebSocketHandler.prototype._onMinicapStopping = function () {
         this.stream.end();
         this.stream = null;
     }
+
+    this.currentRotation = 0;
+    this.currentSize = null;
 
     // Close the websocket if it's open.
     /*if (this.ws) {
