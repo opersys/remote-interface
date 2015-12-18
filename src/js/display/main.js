@@ -424,6 +424,8 @@ DisplayWindow.prototype._onScreenInterestLost = function () {
 // START OF MESSY CODE
 
 module.exports.runDisplay = function (comm, disp) {
+    console.log("Creating display object");
+
     window._dispObject = new DisplayWindow(comm, disp);
     window.onresize = _.debounce(window._dispObject.updateBounds.bind(this), 1000);
 };
