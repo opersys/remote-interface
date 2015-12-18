@@ -67,6 +67,9 @@ var DisplayWindow = function (comm, disp) {
     this._adjustedBoundSize = null;
     this._cachedEnabled = false;
 
+    this.cachedImageWidth = 0;
+    this.cachedImageHeight = 0;
+
     this._options = {
         autoScaleForRetina: true,
         density: Math.max(1, Math.min(1.5, devicePixelRatio || 1)),
@@ -133,17 +136,15 @@ DisplayWindow.prototype._onFrame = (function() {
         }
     };
 
-    var cachedImageWidth = 0,
-        cachedImageHeight = 0,
-        cssRotation = 0,
+    var cssRotation = 0,
         alwaysUpright = true,
         imagePool = new ImagePool(10);
 
     function hasImageAreaChanged(target, img) {
         return cachedScreen.bounds.w !== target._screen.bounds.w ||
             cachedScreen.bounds.h !== target._screen.bounds.h ||
-            cachedImageWidth !== img.width ||
-            cachedImageHeight !== img.height ||
+            target.cachedImageWidth !== img.width ||
+            target.cachedImageHeight !== img.height ||
             cachedScreen.rotation !== target._screen.rotation
     }
 
@@ -154,11 +155,11 @@ DisplayWindow.prototype._onFrame = (function() {
     function updateImageArea(target, img) {
         if (!hasImageAreaChanged(target, img)) return;
 
-        cachedImageWidth = img.width;
-        cachedImageHeight = img.height;
+        target.cachedImageWidth = img.width;
+        target.cachedImageHeight = img.height;
 
-        target._canvas.width = cachedImageWidth;
-        target._canvas.height = cachedImageHeight;
+        target._canvas.width = target.cachedImageWidth;
+        target._canvas.height = target.cachedImageHeight;
 
         cssRotation += rotator(cachedScreen.rotation, target._screen.rotation);
 
@@ -242,6 +243,19 @@ DisplayWindow.prototype._onFrame = (function() {
 })();
 
 DisplayWindow.prototype._onCommSocketRotation = function (angle) {
+    var w, h;
+
+    if (angle == 90 && angle == 270) {
+        w = this.cachedImageWidth;
+        h = this.cachedImageHeight;
+    } else {
+        h = this.cachedImageWidth;
+        w = this.cachedImageHeight;
+    }
+
+    // Resize the window immediately.
+    window.resizeTo(w, h);
+
     this._device.display.rotation = angle;
 };
 
