@@ -94,8 +94,11 @@ var DisplayWindow = function (comm, disp) {
         this._device.display.height
     );
 
-    this._commSock.onRotation.add(this._onCommSocketRotation.bind(this));
-    this._dispSock.onFrame.add(this._onFrame.bind(this));
+    this._commSockRotationHandler = this._onCommSocketRotation.bind(this);
+    this._displayFrameHandler = this._onFrame.bind(this);
+
+    this._commSock.onRotation.add(this._commSockRotationHandler);
+    this._dispSock.onFrame.add(this._displayFrameHandler);
 
     this._canvas.addEventListener("mousedown", this._onMouseDown.bind(this));
     this._canvas.addEventListener("mousemove", this._onMouseMove.bind(this));
@@ -106,7 +109,18 @@ var DisplayWindow = function (comm, disp) {
     this._input.addEventListener("keyup", this._onKeyupListener(this));
     this._input.addEventListener("input", this._onInputListener(this));
 
+    window.resize = _.debounce(this.updateBounds.bind(this), 1000);
+    window.onbeforeunload = this._onWindowBeforeUnload.bind(this);
+
     this._checkEnabled();
+};
+
+/*
+ * Remove the event handlers to the object that were passed to the window.
+ */
+DisplayWindow.prototype._onWindowBeforeUnload = function () {
+    this._commSock.onRotation.remove(this._commSockRotationHandler);
+    this._dispSock.onFrame.remove(this._displayFrameHandler);
 };
 
 DisplayWindow.prototype._checkEnabled = function () {
@@ -243,7 +257,10 @@ DisplayWindow.prototype._onFrame = (function() {
 })();
 
 DisplayWindow.prototype._onCommSocketRotation = function (angle) {
-    var w, h;
+    var w, h, bw, bh;
+
+    bw = window.outerWidth - window.innerWidth;
+    bh = window.outerHeight - window.innerHeight;
 
     if (angle == 90 && angle == 270) {
         w = this.cachedImageWidth;
@@ -254,7 +271,7 @@ DisplayWindow.prototype._onCommSocketRotation = function (angle) {
     }
 
     // Resize the window immediately.
-    window.resizeTo(w, h);
+    window.resizeTo(w - bw, h - bh);
 
     this._device.display.rotation = angle;
 };
@@ -427,5 +444,4 @@ module.exports.runDisplay = function (comm, disp) {
     console.log("Creating display object");
 
     window._dispObject = new DisplayWindow(comm, disp);
-    window.onresize = _.debounce(window._dispObject.updateBounds.bind(this), 1000);
 };

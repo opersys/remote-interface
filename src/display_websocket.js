@@ -66,6 +66,8 @@ DisplayWebSocketHandler.prototype._clearBanner = function () {
 };
 
 DisplayWebSocketHandler.prototype._sendBannerInfo = function () {
+    debug("Sending banner info: " + util.inspect(this.banner));
+
     this.ws.send(JSON.stringify({
         event: "info",
         data: {
@@ -85,6 +87,7 @@ DisplayWebSocketHandler.prototype.onDisplayWebSocketConnect = function (ws) {
 
     this._connectStreams();
 
+    // If there is already a minicap instance running, send back the same banner info.
     if (this._minicap)
         this._sendBannerInfo();
 
@@ -210,18 +213,8 @@ DisplayWebSocketHandler.prototype._onStreamTryRead = function tryRead() {
                     cursor += 1;
                     this.readBannerBytes += 1;
 
-                    if (this.readBannerBytes === this.bannerLength) {
-                        this.ws.send(JSON.stringify({
-                            event: "info",
-                            data: {
-                                realWidth: this.banner.realWidth,
-                                realHeight: this.banner.realHeight,
-                                virtualWidth: this.banner.virtualWidth,
-                                virtualHeight: this.banner.virtualHeight,
-                                rotation: this.banner.orientation
-                            }
-                        }));
-                    }
+                    if (this.readBannerBytes === this.bannerLength)
+                        this._sendBannerInfo();
                 }
                 else if (this.readFrameBytes < 4) {
                     this.frameBodyLength += (chunk[cursor] << (this.readFrameBytes * 8)) >>> 0;
@@ -315,9 +308,6 @@ DisplayWebSocketHandler.prototype._onMinicapStopping = function () {
         this.stream.end();
         this.stream = null;
     }
-
-    this.currentRotation = 0;
-    this.currentSize = null;
 
     // Close the websocket if it's open.
     /*if (this.ws) {

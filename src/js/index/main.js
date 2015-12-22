@@ -21,7 +21,7 @@ var devicePixelRatio = window.devicePixelRatio || 1;
 var density = Math.max(1, Math.min(1.5, devicePixelRatio || 1));
 var minscale = 0.36;
 
-var ws, comm, disp;
+var initialWs, actualWs, comm, disp;
 
 function getWindowSize(dw, dh, rot) {
 
@@ -67,15 +67,27 @@ function onCommInfo(info) {
     document.getElementById("info-model").textContent = info.model;
     document.getElementById("info-abi").textContent = info.abi;
 
-    ws = getWindowSize(info.displaySize.x, info.displaySize.y, info.rotation);
+    if (!initialWs) {
+        // Get a basic starting window size.
+        initialWs = getWindowSize(info.displaySize.x, info.displaySize.y, info.rotation);
 
-    window.disp.geom(ws.w, ws.h);
+        // Send the geometry to minicap.
+        window.disp.geom(initialWs.w, initialWs.h);
+    }
 }
 
 function onDisplayInfo(info) {
     document.getElementById("info-display").textContent = info.realWidth + "x" + info.realHeight;
-    ws.w = info.virtualWidth;
-    ws.h = info.virtualHeight;
+    document.getElementById("info-virt").textContent = info.virtualWidth + "x" + info.virtualHeight;
+
+    // At this point, we've got the geometry at which minicap is started, so set the inner size of the
+    // window to that size.
+    if (!actualWs) {
+        actualWs = {
+            w: info.virtualWidth,
+            h: info.virtualHeight
+        };
+    }
 }
 
 module.exports.onLoad = function () {
@@ -88,7 +100,8 @@ module.exports.onLoad = function () {
 
 module.exports.openDisplay = function () {
     var parent = window;
-    var win = window.open("display.html", "Remote Display", "menubar=no,status=no,width=" + ws.w + ",height=" + ws.h);
+    var win = window.open("display.html", "Remote Display",
+        "menubar=no,status=no,innerWidth=" + actualWs.w + ",innerHeight=" + actualWs.h);
 
     win.addEventListener("load", function () {
         win.JS.runDisplay(parent.comm, parent.disp);

@@ -46,7 +46,6 @@ DisplaySocket.prototype._connect = function () {
 
 DisplaySocket.prototype._onMessage = function (msg) {
     if (msg.data instanceof Blob) {
-        console.log("Received display frame");
         this.onFrame.dispatch(msg.data);
     } else {
         var eventData = JSON.parse(msg.data);
