@@ -41,8 +41,6 @@ var URL = window.URL || window.webkitURL;
 // RELATIVELY CLEANER CODE STARTS HERE.
 
 var DisplayWindow = function (comm, disp, firstFrame) {
-    console.log("Creating new display object: " + comm + ", " + disp);
-
     function vendorBackingStorePixelRatio(g) {
         return g.webkitBackingStorePixelRatio ||
             g.mozBackingStorePixelRatio ||
