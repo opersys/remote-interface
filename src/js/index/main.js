@@ -21,7 +21,7 @@ var devicePixelRatio = window.devicePixelRatio || 1;
 var density = Math.max(1, Math.min(1.5, devicePixelRatio || 1));
 var minscale = 0.36;
 
-var initialWs, actualWs, comm, disp;
+var initialWs, actualWs, comm, disp, firstFrame = null;
 
 function getWindowSize(dw, dh, rot) {
 
@@ -90,12 +90,17 @@ function onDisplayInfo(info) {
     }
 }
 
+function onDisplayFrame(frame) {
+    firstFrame = frame;
+}
+
 module.exports.onLoad = function () {
     window.comm = new CommSocket();
     window.comm.onInfo.add(onCommInfo);
 
     window.disp = new DisplaySocket();
     window.disp.onInfo.add(onDisplayInfo);
+    window.disp.onFrame.add(onDisplayFrame);
 };
 
 module.exports.openDisplay = function () {
@@ -104,6 +109,6 @@ module.exports.openDisplay = function () {
         "menubar=no,status=no,innerWidth=" + actualWs.w + ",innerHeight=" + actualWs.h);
 
     win.addEventListener("load", function () {
-        win.JS.runDisplay(parent.comm, parent.disp);
+        win.JS.runDisplay(parent.comm, parent.disp, firstFrame);
     });
 };

@@ -40,7 +40,7 @@ var URL = window.URL || window.webkitURL;
 
 // RELATIVELY CLEANER CODE STARTS HERE.
 
-var DisplayWindow = function (comm, disp) {
+var DisplayWindow = function (comm, disp, firstFrame) {
     console.log("Creating new display object: " + comm + ", " + disp);
 
     function vendorBackingStorePixelRatio(g) {
@@ -113,6 +113,9 @@ var DisplayWindow = function (comm, disp) {
     window.onbeforeunload = this._onWindowBeforeUnload.bind(this);
 
     this._checkEnabled();
+
+    if (firstFrame)
+        this._displayFrameHandler(firstFrame);
 };
 
 /*
@@ -440,8 +443,6 @@ DisplayWindow.prototype._onScreenInterestLost = function () {
 
 // START OF MESSY CODE
 
-module.exports.runDisplay = function (comm, disp) {
-    console.log("Creating display object");
-
-    window._dispObject = new DisplayWindow(comm, disp);
+module.exports.runDisplay = function (comm, disp, firstFrame) {
+    window._dispObject = new DisplayWindow(comm, disp, firstFrame);
 };
