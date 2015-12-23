@@ -268,10 +268,7 @@ DisplayWindow.prototype._onCommSocketRotation = function (na) {
         w = this.cachedImageWidth;
         h = this.cachedImageHeight;
     }
-    else
-    if ((ca == 0 || ca == 180) && (na == 90 || na == 270) ||
-        (ca == 0 || ca == 180) && (na == 0 || na == 180) ||
-        (ca == 90 || ca == 270) && (na == 0 || na == 180)) {
+    else {
         h = this.cachedImageWidth;
         w = this.cachedImageHeight;
     }
