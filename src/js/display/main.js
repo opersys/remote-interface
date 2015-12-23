@@ -257,16 +257,21 @@ DisplayWindow.prototype._onFrame = (function() {
     };
 })();
 
-DisplayWindow.prototype._onCommSocketRotation = function (angle) {
-    var w, h, bw, bh;
+DisplayWindow.prototype._onCommSocketRotation = function (na) {
+    var w, h, bw, bh, ca;
 
+    ca = this._device.display.rotation;
     bw = window.outerWidth - window.innerWidth;
     bh = window.outerHeight - window.innerHeight;
 
-    if (angle == 90 && angle == 270) {
+    if ((ca == 90 || ca == 270) && (na == 90 || na == 270)) {
         w = this.cachedImageWidth;
         h = this.cachedImageHeight;
-    } else {
+    }
+    else
+    if ((ca == 0 || ca == 180) && (na == 90 || na == 270) ||
+        (ca == 0 || ca == 180) && (na == 0 || na == 180) ||
+        (ca == 90 || ca == 270) && (na == 0 || na == 180)) {
         h = this.cachedImageWidth;
         w = this.cachedImageHeight;
     }
@@ -274,7 +279,7 @@ DisplayWindow.prototype._onCommSocketRotation = function (angle) {
     // Resize the window immediately.
     window.resizeTo(w - bw, h - bh);
 
-    this._device.display.rotation = angle;
+    this._device.display.rotation = na;
 };
 
 DisplayWindow.prototype._onInputListener = function () {
