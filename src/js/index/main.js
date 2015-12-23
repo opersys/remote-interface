@@ -82,12 +82,10 @@ function onDisplayInfo(info) {
 
     // At this point, we've got the geometry at which minicap is started, so set the inner size of the
     // window to that size.
-    if (!actualWs) {
-        actualWs = {
-            w: info.virtualWidth,
-            h: info.virtualHeight
-        };
-    }
+    actualWs = {
+        w: info.virtualWidth,
+        h: info.virtualHeight
+    };
 }
 
 function onDisplayFrame(frame) {

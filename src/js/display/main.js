@@ -107,7 +107,7 @@ var DisplayWindow = function (comm, disp, firstFrame) {
     this._input.addEventListener("keyup", this._onKeyupListener(this));
     this._input.addEventListener("input", this._onInputListener(this));
 
-    window.resize = _.debounce(this.updateBounds.bind(this), 1000);
+    window.onresize = _.debounce(this.updateBounds, 1000).bind(this);
     window.onbeforeunload = this._onWindowBeforeUnload.bind(this);
 
     this._checkEnabled();
