@@ -264,6 +264,10 @@ DisplayWindow.prototype._onCommSocketRotation = function (na) {
     bw = window.outerWidth - window.innerWidth;
     bh = window.outerHeight - window.innerHeight;
 
+    // FIXME: This resize code works super well if the browser window isn't zoomed!
+    // We need to either find a way to compensate for the zoom or warn the user that
+    // the some might confuse the display.
+
     if ((ca == 90 || ca == 270) && (na == 90 || na == 270)) {
         w = this.cachedImageWidth;
         h = this.cachedImageHeight;
@@ -274,7 +278,7 @@ DisplayWindow.prototype._onCommSocketRotation = function (na) {
     }
 
     // Resize the window immediately.
-    window.resizeTo(w - bw, h - bh);
+    window.resizeTo(w + bw, h + bh);
 
     this._device.display.rotation = na;
 };
