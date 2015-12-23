@@ -78,14 +78,19 @@ function onCommInfo(info) {
 
 function onDisplayInfo(info) {
     document.getElementById("info-display").textContent = info.realWidth + "x" + info.realHeight;
-    document.getElementById("info-virt").textContent = info.virtualWidth + "x" + info.virtualHeight;
+    document.getElementById("info-virt").textContent = info.virtualWidth + "x" + info.virtualHeight + "/" + info.rotation;
 
-    // At this point, we've got the geometry at which minicap is started, so set the inner size of the
-    // window to that size.
-    actualWs = {
-        w: info.virtualWidth,
-        h: info.virtualHeight
-    };
+    if (info.rotation == 90 || info.rotation == 270) {
+        actualWs = {
+            h: info.virtualWidth,
+            w: info.virtualHeight
+        }
+    } else {
+        actualWs = {
+            h: info.virtualHeight,
+            w: info.virtualWidth
+        }
+    }
 }
 
 function onDisplayFrame(frame) {

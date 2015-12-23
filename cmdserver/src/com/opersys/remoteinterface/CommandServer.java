@@ -270,8 +270,6 @@ public class CommandServer {
     public static void main(String args[]) {
         Thread rotWatcher, cmdHandler;
 
-        setInitialRotation(Surface.ROTATION_0);
-
         Log.d(TAG, "Starting CommandServer");
 
         rotWatcher = new RotationWatcherThread();
