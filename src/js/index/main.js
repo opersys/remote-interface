@@ -88,13 +88,13 @@ function onDisplayInfo(info) {
 
     if (actualRot == 90 || actualRot == 270) {
         actualWs = {
-            h: info.virtualWidth,
-            w: info.virtualHeight
+            w: info.virtualWidth,
+            h: info.virtualHeight
         };
     } else {
         actualWs = {
-            w: info.virtualHeight,
-            h: info.virtualWidth
+            h: info.virtualHeight,
+            w: info.virtualWidth
         };
     }
 }
