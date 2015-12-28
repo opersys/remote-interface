@@ -21,7 +21,7 @@ var devicePixelRatio = window.devicePixelRatio || 1;
 var density = Math.max(1, Math.min(1.5, devicePixelRatio || 1));
 var minscale = 0.36;
 
-var initialWs, actualWs, comm, disp, firstFrame = null;
+var initialWs, actualWs, actualRot, comm, disp, firstFrame = null;
 
 function getWindowSize(dw, dh, rot) {
 
@@ -67,6 +67,8 @@ function onCommInfo(info) {
     document.getElementById("info-model").textContent = info.model;
     document.getElementById("info-abi").textContent = info.abi;
 
+    actualRot = info.rotation;
+
     if (!initialWs) {
         // Get a basic starting window size.
         initialWs = getWindowSize(info.displaySize.x, info.displaySize.y, info.rotation);
@@ -76,21 +78,33 @@ function onCommInfo(info) {
     }
 }
 
+function onRotation(rotation) {
+    actualRot = rotation;
+}
+
 function onDisplayInfo(info) {
     document.getElementById("info-display").textContent = info.realWidth + "x" + info.realHeight;
-    document.getElementById("info-virt").textContent = info.virtualWidth + "x" + info.virtualHeight + "/" + info.rotation;
+    document.getElementById("info-virt").textContent = info.virtualWidth + "x" + info.virtualHeight;
 
-    if (info.rotation == 90 || info.rotation == 270) {
+    if (actualRot == 90 || actualRot == 270) {
         actualWs = {
             h: info.virtualWidth,
             w: info.virtualHeight
-        }
+        };
     } else {
         actualWs = {
-            h: info.virtualHeight,
-            w: info.virtualWidth
-        }
+            w: info.virtualHeight,
+            h: info.virtualWidth
+        };
     }
+}
+
+function refreshPreview() {
+    var url, img, pimg, pimgW, pimgH;
+
+    url = URL.createObjectURL(firstFrame);
+    pimg = document.getElementById("previewImage");
+    pimg.setAttribute("src", url);
 }
 
 function onDisplayFrame(frame) {
@@ -100,10 +114,13 @@ function onDisplayFrame(frame) {
 module.exports.onLoad = function () {
     window.comm = new CommSocket();
     window.comm.onInfo.add(onCommInfo);
+    window.comm.onRotation.add(onRotation);
 
     window.disp = new DisplaySocket();
     window.disp.onInfo.add(onDisplayInfo);
     window.disp.onFrame.add(onDisplayFrame);
+
+    setInterval(refreshPreview, 2000);
 };
 
 module.exports.openDisplay = function () {

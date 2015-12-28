@@ -33,7 +33,7 @@ var DisplayWebSocketHandler = function (wss, screenwatcher) {
     this.initialSize = Display.getInitialDisplaySize(0);
     this.baseSize = Display.getBaseDisplaySize(0);
     this.currentSize = this.baseSize;
-    this.currentRotation = 0;
+    this.currentRotation = Display.getRotation();
 
     this._isRestarting = false;
 
@@ -45,7 +45,7 @@ var DisplayWebSocketHandler = function (wss, screenwatcher) {
     this._clearBanner();
 
     this.screenwatcher = screenwatcher;
-    this.screenwatcher.screenWatcherRotationSignal.add(this.onScreenWatcherRotation.bind(this));
+    this.screenwatcher.rotationSignal.add(this.onRotation.bind(this));
 
     wss.on("connection", this.onDisplayWebSocketConnect.bind(this));
 };
@@ -74,8 +74,7 @@ DisplayWebSocketHandler.prototype._sendBannerInfo = function () {
             realWidth: this.banner.realWidth,
             realHeight: this.banner.realHeight,
             virtualWidth: this.banner.virtualWidth,
-            virtualHeight: this.banner.virtualHeight,
-            rotation: this.banner.orientation
+            virtualHeight: this.banner.virtualHeight
         }
     }));
 };
@@ -95,7 +94,7 @@ DisplayWebSocketHandler.prototype.onDisplayWebSocketConnect = function (ws) {
     ws.on("message", this.onDisplayWebSocketMessage.bind(this));
 };
 
-DisplayWebSocketHandler.prototype.onScreenWatcherRotation = function (rot) {
+DisplayWebSocketHandler.prototype.onRotation = function (rot) {
     debug("Device rotated, restarting minicap (angle: " + rot + ")");
 
     // Change the new geometry of minicap.

@@ -37,7 +37,7 @@ var CommWebSocketHandler = function (wss, commandServer) {
 
     this.banner = null;
     this.commandServer = commandServer;
-    this.commandServer.screenWatcherRotationSignal.add(this.onScreenWatcherRotation.bind(this));
+    this.commandServer.rotationSignal.add(this.onRotation.bind(this));
 
     wss.on("connection", this.onCommWebsocketConnect.bind(this));
 };
@@ -92,7 +92,7 @@ CommWebSocketHandler.prototype.onCommWebsocketClose = function () {
     debug("Web socket disconnected");
 };
 
-CommWebSocketHandler.prototype.onScreenWatcherRotation = function (rotation) {
+CommWebSocketHandler.prototype.onRotation = function (rotation) {
     // Send the rotation event.
     if (this.ws)
         this.ws.send(JSON.stringify({event: "rotation", data: rotation}));

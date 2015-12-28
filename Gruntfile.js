@@ -63,6 +63,7 @@ module.exports = function (grunt) {
                     mkdist("_bin"),
                     mkdist("public", "css"),
                     mkdist("public", "fonts"),
+                    mkdist("public", "images"),
                     "out"
                 ]
             }

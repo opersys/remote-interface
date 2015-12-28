@@ -21,9 +21,9 @@ var path = require("path");
 var util = require("util");
 
 var CommandServer = function () {
-    this.screenWatcherRotationSignal = new signals.Signal();
-    this.screenWatcherErrorSignal = new signals.Signal();
-    this.screenWatcherStopSignal = new signals.Signal();
+    this.rotationSignal = new signals.Signal();
+    this.errorSignal = new signals.Signal();
+    this.stopSignal = new signals.Signal();
 
     this._sw = null;
 };
@@ -52,18 +52,18 @@ CommandServer.prototype.start = function start() {
             var ev = JSON.parse(rots);
 
             if (ev.event == "rotation")
-                self.screenWatcherRotationSignal.dispatch(ev.rotation);
+                self.rotationSignal.dispatch(ev.rotation);
             else
                 debug("Unhandled event: " + ev.event);
         }
     });
 
     this._sw.on("close", function () {
-        self.screenWatcherStopSignal.dispatch();
+        self.stopSignal.dispatch();
     });
 
     this._sw.on("error", function (err) {
-        self.screenWatcherErrorSignal.dispatch(err);
+        self.errorSignal.dispatch(err);
 
         debug("Error launching CommandServer: " + err);
     });

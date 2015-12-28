@@ -1,0 +1,26 @@
+body {
+    padding: 1em;
+}
+
+.infoView {
+    width: 60%;
+}
+
+.infoTable {
+    border: 1px black solid;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.infoTable tr {
+    border: 1px black solid;
+}
+
+.infoTable tr td:nth-child(1) {
+    width: 10em;
+}
+
+.infoTable tr td {
+    border: 1px black solid;
+    padding: 2em;
+}

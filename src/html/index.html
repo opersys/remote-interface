@@ -9,32 +9,60 @@
             JS.onLoad();
         });
     </script>
+    <link rel="stylesheet" href="css/index.css" />
 </head>
 
 <body>
 
-<div id="info-manufacturer">
+<div class="infoView">
+    <table class="infoTable">
+        <tr>
+            <td colspan="3">
+                <div>
+                    Opersys Remote Interface
+                    <img src="images/opersys_land_logo.png" />
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td rowspan="6">
+                <img width="320" id="previewImage" src="" />
+            </td>
+        </tr>
 
-</div>
+        <tr>
+            <td><em>Manufacturer</em></td>
+            <td><span id="info-manufacturer"></span></td>
+        </tr>
 
-<div id="info-abi">
+        <tr>
+            <td><em>ABI</em></td>
+            <td><span id="info-abi"></span></td>
+        </tr>
 
-</div>
+        <tr>
+            <td><em>Model</em></td>
+            <td><span id="info-model"></span></td>
+        </tr>
 
-<div id="info-model">
+        <tr>
+            <td><em>Actual resolution</em></td>
+            <td><span id="info-display"></span></td>
+        </tr>
 
-</div>
+        <tr>
+            <td><em>Projected resolution</em></td>
+            <td><span id="info-virt"></span></td>
+        </tr>
 
-<div id="info-display">
-
-</div>
-
-<div id="info-virt">
-
-</div>
-
-<div id="display">
-    <a href="javascript:JS.openDisplay()">OPEN THE FUCKING DISPLAY</a>
+        <tr>
+            <td colspan="3">
+                <div id="display">
+                    <a href="javascript:JS.openDisplay()">OPEN THE FUCKING DISPLAY</a>
+                </div>
+            </td>
+        </tr>
+    </table>
 </div>
 
 </body>
