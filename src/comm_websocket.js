@@ -94,7 +94,8 @@ CommWebSocketHandler.prototype.onCommWebsocketClose = function () {
 
 CommWebSocketHandler.prototype.onScreenWatcherRotation = function (rotation) {
     // Send the rotation event.
-    this.ws.send(JSON.stringify({event: "rotation", data: rotation}));
+    if (this.ws)
+        this.ws.send(JSON.stringify({event: "rotation", data: rotation}));
 };
 
 /*
