@@ -100,7 +100,7 @@ function onDisplayInfo(info) {
 }
 
 function refreshPreview() {
-    var url, img, pimg, pimgW, pimgH;
+    var url, pimg;
 
     url = URL.createObjectURL(firstFrame);
     pimg = document.getElementById("previewImage");

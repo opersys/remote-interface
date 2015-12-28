@@ -9,60 +9,57 @@
             JS.onLoad();
         });
     </script>
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/bootstrap-theme.min.css" />
     <link rel="stylesheet" href="css/index.css" />
 </head>
 
 <body>
 
-<div class="infoView">
-    <table class="infoTable">
-        <tr>
-            <td colspan="3">
-                <div>
-                    Opersys Remote Interface
-                    <img src="images/opersys_land_logo.png" />
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td rowspan="6">
-                <img width="320" id="previewImage" src="" />
-            </td>
-        </tr>
+<div class="page-header">
+    <h1>Opersys Remote Interface<img src="images/opersys_land_logo.png" /></h1>
+</div>
 
-        <tr>
-            <td><em>Manufacturer</em></td>
-            <td><span id="info-manufacturer"></span></td>
-        </tr>
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <img width="320" id="previewImage" src="" onclick="JS.openDisplay()" />
+        </div>
 
-        <tr>
-            <td><em>ABI</em></td>
-            <td><span id="info-abi"></span></td>
-        </tr>
+        <div class="col-md-6">
+            <div class="row">
+                <table class="table">
+                    <tr>
+                        <td><em>Manufacturer</em></td>
+                        <td><span id="info-manufacturer"></span></td>
+                    </tr>
 
-        <tr>
-            <td><em>Model</em></td>
-            <td><span id="info-model"></span></td>
-        </tr>
+                    <tr>
+                        <td><em>ABI</em></td>
+                        <td><span id="info-abi"></span></td>
+                    </tr>
 
-        <tr>
-            <td><em>Actual resolution</em></td>
-            <td><span id="info-display"></span></td>
-        </tr>
+                    <tr>
+                        <td><em>Model</em></td>
+                        <td><span id="info-model"></span></td>
+                    </tr>
 
-        <tr>
-            <td><em>Projected resolution</em></td>
-            <td><span id="info-virt"></span></td>
-        </tr>
+                    <tr>
+                        <td><em>Actual resolution</em></td>
+                        <td><span id="info-display"></span></td>
+                    </tr>
 
-        <tr>
-            <td colspan="3">
-                <div id="display">
-                    <a href="javascript:JS.openDisplay()">OPEN THE FUCKING DISPLAY</a>
-                </div>
-            </td>
-        </tr>
-    </table>
+                    <tr>
+                        <td><em>Projected resolution</em></td>
+                        <td><span id="info-virt"></span></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="row">
+                <h5>Click on the image to interact with the device...</h5>
+            </div>
+        </div>
+    </div>
 </div>
 
 </body>
