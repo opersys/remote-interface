@@ -45,3 +45,7 @@ In the device *adb shell*, start the Remote Interface the following way:
 Or, if you want a bit of logging
 
 > /data/local/tmp $ DEBUG=RI* ./node app.js
+
+# Contributors
+* François-Denis Gonthier francois-denis.gonthier@opersys.com -- main developer and maintainer
+* Karim Yaghmour karim.yaghmour@opersys.com -- ideation and project management

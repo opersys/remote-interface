@@ -35,6 +35,7 @@ import java.io.InputStreamReader;
  * Tiny console program that sits around and receive notification from the window manager when
  * the device is rotated.
  *
+ * Loosely based on:
  * https://github.com/openstf/STFService.apk/blob/master/app/src/main/java/jp/co/cyberagent/stf/monitor/RotationMonitor.java
  */
 public class CommandServer {
