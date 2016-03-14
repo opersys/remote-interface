@@ -52,6 +52,12 @@ Or, if you want a bit of logging
 
 > /data/local/tmp $ DEBUG=RI* ./node app.js
 
+# Bugs
+
+This is a late alpha quality release so there are probably more missing features than bugs but it works generally well enough to be used.
+
+The worse bug I've found is probably minicap causing the device to freeze and reboot but it has not happened enough to me to be an issue during development.
+
 # Contributors
 * François-Denis Gonthier francois-denis.gonthier@opersys.com -- main developer and maintainer
 * Karim Yaghmour karim.yaghmour@opersys.com -- ideation and project management
