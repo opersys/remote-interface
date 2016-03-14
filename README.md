@@ -38,7 +38,13 @@ With the *dist_arm* and *dist_ia32* directories created, you can push them on yo
 
 > $ adb push dist_arm /data/local/tmp
 
-In the device *adb shell*, start the Remote Interface the following way:
+In the device *adb shell*, you might need to make minicap and minitouch files executable. There are several executable files in that directory so go with the lazy way and make them all executable:
+
+> chmod -R 0755 _bin
+
+This is probably very insecure but I certainly don't recommend leaving Remote Interface running when the device is in a public network.
+
+Start the Remote Interface the following way:
 
 > /data/local/tmp $ ./node app.js
 
