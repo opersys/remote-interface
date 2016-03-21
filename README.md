@@ -24,7 +24,7 @@ Once you have cloned the Git repository for this project, you need to also clone
 
 > git submodule update
 
-Those commands should download *minicap* and *minitouch* which you have to build individually. Those projects require you to have the [Android NDK](http://developer.android.com/tools/sdk/ndk/index.html) installed. Follow the individual build instruction for [minicap](https://github.com/openstf/minicap) and [minitouch](https://github.com/openstf/minitouch).
+Those commands should download *minicap* and *minitouch* which you have to build individually. Those projects require you to have the [Android NDK](http://developer.android.com/tools/sdk/ndk/index.html) installed. Building those projects should be as simple as running *ndk-build* in each directories.
 
 Once *minicap* and *minitouch* are built in their respective directories, you can get back to building Remote Interface. First, make sure all the require Node.JS modules are installed.
 
