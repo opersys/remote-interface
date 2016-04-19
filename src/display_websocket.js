@@ -44,7 +44,7 @@ var DisplayWebSocketHandler = function (wss, screenwatcher, props) {
         throw "Could not get initial screen size";
     if (!this._baseSize)
         throw "Could not get base screen size";
-    if (!this._currentRotation)
+    if (this._currentRotation == null)
         throw "Could not get current screen rotation";
 
     this._clearBanner();
@@ -271,6 +271,8 @@ DisplayWebSocketHandler.prototype._onStreamError = function () {
 };
 
 DisplayWebSocketHandler.prototype._disconnectStreams = function () {
+    if (!this.stream) return;
+
     if (this._streamErrorHandler)
         this.stream.removeListener("error", this._streamErrorHandler);
 
@@ -279,6 +281,21 @@ DisplayWebSocketHandler.prototype._disconnectStreams = function () {
 
     this._streamErrorHandler = null;
     this._streamTryReadHandler = null;
+
+    this.stream.end();
+    this.stream = null;
+};
+
+// Remove the event handlers on the process and clear out the process variable.
+DisplayWebSocketHandler.prototype._clearMinicap = function () {
+    if (!this._minicap) return;
+
+    // We don't want to hear about this process anymore.
+    this._minicap.startedSignal.remove(this._startedSignalHandler);
+    this._minicap.stoppedSignal.remove(this._stoppedSignalHandler);
+    this._minicap.errorSignal.remove(this._errorSignalHandler);
+
+    this._minicap = null;
 };
 
 DisplayWebSocketHandler.prototype._connectStreams = function () {
@@ -321,58 +338,36 @@ DisplayWebSocketHandler.prototype._onMinicapStarted = function () {
     }]);
 };
 
-DisplayWebSocketHandler.prototype._onMinicapStopping = function () {
-    // We don't want to hear about this process anymore.
-    this._minicap.startedSignal.remove(this._startedSignalHandler);
-    this._minicap.stoppingSignal.remove(this._stoppingSignalHandler);
-    this._minicap.errorSignal.remove(this._errorSignalHandler);
-
-    // Close the stream to minicap if it's open.
-    if (this.stream) {
-        this._disconnectStreams();
-
-        this.stream.end();
-        this.stream = null;
-    }
-
-    // If the process was asked to restart, it is expected that it stops...
-    // We restart it immediately.
-    if (this._isRestarting) this._startMinicap();
-};
-
 DisplayWebSocketHandler.prototype._onMinicapStopped = function () {
-    var now = Date.now();
-
-    // Don't touch a process that is in the process of being restarted.
-    if (this._isRestarting) return;
-
-    // Clear the minicap instance: it's stopped, it's dead. If we don't do
-    // that, it won't get restarted by startOrRestartMinicap.
-    this._minicap = null;
-
-    // For the websocket to disconnect
+    // Cleanup!
+    this._clearMinicap();
     this._disconnectStreams();
 
-    // Otherwise, the process has just stopped for some reason. We'll restart
-    // it if the last restart wasn't just a few seconds ago.
-    if (now - this._lastStartTime > 2000) {
-        debug("Restarting minicap automatically.");
-        this.startOrRestartMinicap();
-    } else
-        debug("Last restart was " + (now - this._lastStartTime) / 1000 + " seconds ago. Not restarting Minicap.");
+    // Don't touch a process that is in the process of being restarted.
+    if (this._isRestarting)
+        this._startMinicap();
+    else {
+        // Otherwise, the process has just stopped for some reason. We'll restart
+        // it if the last restart wasn't just a few seconds ago.
+        var now = Date.now();
+
+        if (now - this._lastStartTime > 2000) {
+            debug("Restarting minicap automatically.");
+            this.startOrRestartMinicap();
+        } else
+            debug("Last restart was " + (now - this._lastStartTime) / 1000 + " seconds ago. Not restarting Minicap.");
+    }
 };
 
 DisplayWebSocketHandler.prototype._startMinicap = function () {
     this._minicap = new Minicap(this._props);
 
     this._startedSignalHandler = this._onMinicapStarted.bind(this);
-    this._stoppingSignalHandler = this._onMinicapStopping.bind(this);
     this._stoppedSignalHandler = this._onMinicapStopped.bind(this);
     this._errorSignalHandler = this._onMinicapError.bind(this);
     this._isRestarting = false;
 
     this._minicap.startedSignal.add(this._startedSignalHandler);
-    this._minicap.stoppingSignal.add(this._stoppingSignalHandler);
     this._minicap.stoppedSignal.add(this._stoppedSignalHandler);
     this._minicap.errorSignal.add(this._errorSignalHandler);
 
