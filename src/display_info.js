@@ -44,29 +44,51 @@ function getDisplaySize(transNo, dispNo) {
 }
 
 function getInitialDisplaySize(dispNo) {
-    return getDisplaySize(6, dispNo);
+    var r = getDisplaySize(6, dispNo);
+
+    if (!r)
+        throw "getInitialDisplaySize returned an unknown value";
+
+    return r;
 }
 
 function getBaseDisplaySize(dispNo) {
-    return getDisplaySize(7, dispNo);
+    var r = getDisplaySize(7, dispNo);
+
+    if (!r)
+        throw "getBaseDisplaySize returned an unknown value";
+
+    return r;
 }
 
-function getRotation() {
+function getRotation(sdkVersion) {
     var data = new Binder.Parcel();
     var reply = new Binder.Parcel();
+    var r;
+
+    if (sdkVersion >= 23)
+        tcode = 64;
+    else
+        tcode = 62;
 
     data.writeInterfaceToken("android.view.IWindowManager");
-    reply = wm.transact(62, data, reply, 0);
+    reply = wm.transact(tcode, data, reply, 0);
 
     reply.readExceptionCode();
-    var r = reply.readInt32();
+    r = reply.readInt32();
 
     switch (r) {
-        case 0: return 0;
-        case 1: return 90;
-        case 2: return 180;
-        case 3: return 270;
+        case 0:
+            return 0;
+        case 1:
+            return 90;
+        case 2:
+            return 180;
+        case 3:
+            return 270;
     }
+
+    throw "getRotation returned " + r + ", which is not a known value";
 }
 
 module.exports = {

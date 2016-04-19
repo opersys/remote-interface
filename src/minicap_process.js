@@ -21,15 +21,11 @@ var uuid = require("uuid");
 
 var props = require("./props.js");
 var DaemonProcess = require("./daemon_process.js");
+var debug = require("debug")("RI.Proc.Minicap");
 
-var Minicap = function () {
+var Minicap = function (props) {
     DaemonProcess.call(this);
-
-    this.props = [
-        "ro.product.cpu.abi",
-        "ro.build.version.sdk",
-        "ro.build.version.release"
-    ];
+    this._props = props;
 };
 
 util.inherits(Minicap, DaemonProcess);
@@ -40,45 +36,31 @@ Minicap.prototype.socketName = function () {
 
 Minicap.prototype._arguments = function (initialSize, currentSize, currentRotation, argsCallback) {
     var self = this;
+    var abi = this._props["ro.product.cpu.abi"];
+    var sdk = this._props["ro.build.version.sdk"];
+    var rel = this._props["ro.build.version.release"];
+    var bin, libdir, exec;
 
-    props.getprops(this.props, function (err, props) {
-        if (err) throw err;
+    bin = sdk >= 16 ? "minicap" : "minicap-nopie";
+    var args = [
+        "-d", "0",
+        "-S",
+        "-n", self._socketName,
+        "-P", initialSize.x + "x" + initialSize.y +
+        "@" + currentSize.x + "x" + currentSize.y + "/" + currentRotation
+    ];
 
-        var abi = props["ro.product.cpu.abi"];
-        var sdk = props["ro.build.version.sdk"];
-        var rel = props["ro.build.version.release"];
-        var bin, libdir, exec;
+    libdir = path.join(process.cwd(), "_bin", "minicap", "android-" + rel, abi);
 
-        bin = sdk >= 16 ? "minicap" : "minicap-nopie";
-        var args = [
-            "-d", "0",
-            "-S",
-            "-n", self._socketName,
-            "-P", initialSize.x + "x" + initialSize.y +
-            "@" + currentSize.x + "x" + currentSize.y + "/" + currentRotation
-        ];
+    if (!fs.existsSync(libdir))
+        libdir = path.join(process.cwd(), "_bin", "minicap", "android-" + sdk, abi);
 
-        libdir = path.join(process.cwd(), "_bin", "minicap", "android-" + rel, abi);
+    process.env["LD_LIBRARY_PATH"] = libdir;
+    debug("LD_LIBRARY_PATH = " + libdir);
 
-        if (!fs.existsSync(libdir))
-            libdir = path.join(process.cwd(), "_bin", "minicap", "android-" + sdk, abi);
+    exec = path.join(process.cwd(), "_bin", "minicap", abi, bin);
 
-        process.env["LD_LIBRARY_PATH"] = libdir;
-
-        exec = path.join(process.cwd(), "_bin", "minicap", abi, bin);
-
-        argsCallback(exec, args);
-    });
-};
-
-Minicap.prototype.startTest = function (initialSize, currentSize, currentRotation) {
-    var self = this;
-
-    DaemonProcess.prototype.start.apply(this);
-
-    self._arguments(initialSize, currentSize, currentRotation, function (exec, args) {
-        self._start(exec, args.concat("-t"));
-    });
+    argsCallback(exec, args);
 };
 
 Minicap.prototype.startCapture = function (initialSize, currentSize, currentRotation) {
@@ -89,7 +71,8 @@ Minicap.prototype.startCapture = function (initialSize, currentSize, currentRota
     this._socketName = uuid.v1();
 
     self._arguments(initialSize, currentSize, currentRotation, function (exec, args) {
-        self._start(exec, args.concat(["-n", self._socketName]));
+        var fullArgs = args.concat(["-n", self._socketName]);
+        self._start(exec, fullArgs);
     });
 };
 

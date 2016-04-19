@@ -14,30 +14,22 @@
  * limitations under the License.
  */
 
-var abs = require("abstract-socket");
 var async = require("async");
 var debug = require("debug")("RI.ws.input");
-var readline = require("line-read");
 var util = require("util");
-var cp = require("child_process");
 var path = require("path");
 var signals = require("signals");
 var uuid = require("uuid");
 
 var Display = require("./display_info.js");
-var props = require("./props.js");
 var Minitouch = require("./minitouch_process.js");
 var MinitouchHelper = require("./daemon_process_helpers");
 
-var CommWebSocketHandler = function (wss, commandServer) {
-    this.props = [
-        "ro.product.cpu.abi",
-        "ro.build.version.sdk"
-    ];
-
-    this.banner = null;
-    this.commandServer = commandServer;
-    this.commandServer.rotationSignal.add(this.onRotation.bind(this));
+var CommWebSocketHandler = function (wss, commandServer, props) {
+    this._props = props;
+    this._banner = null;
+    this._commandServer = commandServer;
+    this._commandServer.rotationSignal.add(this.onRotation.bind(this));
 
     wss.on("connection", this.onCommWebsocketConnect.bind(this));
 };
@@ -55,37 +47,16 @@ CommWebSocketHandler.prototype.onCommWebsocketConnect = function (ws) {
     ws.on("close", this.onCommWebsocketClose.bind(this));
     ws.on("message", this.onCommWebsocketMessage.bind(this));
 
-    props.getprops([
-        "ro.product.model",
-        "ro.product.cpu.abi",
-        "ro.product.manufacturer"],
-
-        function (err, props) {
-            if (err) debug("Getprop error: ", err);
-
-            if (!err) {
-                self.ws.send(JSON.stringify({
-                    "event": "info",
-                    "data": {
-                        "displaySize": Display.getInitialDisplaySize(0),
-                        "rotation": Display.getRotation(),
-                        "model": props["ro.product.model"],
-                        "abi": props["ro.product.cpu.abi"],
-                        "manufacturer": props["ro.product.manufacturer"]
-                    }
-                }));
-            } else {
-                self.ws.send(JSON.stringify({
-                    "event": "info",
-                    "data": {
-                        "model": null,
-                        "abi": null,
-                        "manufacturer": null
-                    }
-                }));
-            }
+    self.ws.send(JSON.stringify({
+        "event": "info",
+        "data": {
+            "displaySize": Display.getInitialDisplaySize(0),
+            "rotation": Display.getRotation(this._props["ro.build.version.sdk"]),
+            "model": this._props["ro.product.model"],
+            "abi": this._props["ro.product.cpu.abi"],
+            "manufacturer": this._props["ro.product.manufacturer"]
         }
-    );
+    }));
 };
 
 CommWebSocketHandler.prototype.onCommWebsocketClose = function () {
@@ -165,7 +136,7 @@ CommWebSocketHandler.prototype._readBanner = function(socket) {
         var args = versionLine.split(/ /g);
         switch (args[0]) {
             case 'v':
-                self.banner.version = +args[1];
+                self._banner.version = +args[1];
                 break;
             default:
                 throw util.format("Unexpected output \"%s\", expecting version line", versionLine);
@@ -176,10 +147,10 @@ CommWebSocketHandler.prototype._readBanner = function(socket) {
         var args = limitsLine.split(/ /g);
         switch (args[0]) {
             case '^':
-                self.banner.maxContacts = args[1];
-                self.banner.maxX = args[2];
-                self.banner.maxY = args[3];
-                self.banner.maxPressure = args[4];
+                self._banner.maxContacts = args[1];
+                self._banner.maxX = args[2];
+                self._banner.maxY = args[3];
+                self._banner.maxPressure = args[4];
                 break;
             default:
                 throw util.format("Unknown output \"%s\", expecting limits line");
@@ -190,14 +161,14 @@ CommWebSocketHandler.prototype._readBanner = function(socket) {
         var args = pidLine.split(/ /g);
         switch (args[0]) {
             case '$':
-                self.banner.pid = +args[1];
+                self._banner.pid = +args[1];
                 break;
             default:
                 throw util.format("Unexpected output \"%s\", expecting pid line");
         }
     }
 
-    self.banner = {
+    self._banner = {
         pid: -1,
         version: 0,
         maxContacts: 0,
@@ -215,7 +186,7 @@ CommWebSocketHandler.prototype._readBanner = function(socket) {
         parseLimits(limitsLine);
         parsePid(pidLine);
 
-        debug("Minitouch banner: " + util.inspect(self.banner));
+        debug("Minitouch banner: " + util.inspect(self._banner));
     });
 };
 
@@ -237,7 +208,7 @@ CommWebSocketHandler.prototype._onMinitouchStopping = function () {
 };
 
 CommWebSocketHandler.prototype._startMinitouch = function () {
-    this._minitouch = new Minitouch();
+    this._minitouch = new Minitouch(this._props);
     this._minitouch.start();
 
     this._startedSignalHandler = this._onMinitouchStarted.bind(this);
@@ -269,7 +240,7 @@ CommWebSocketHandler.prototype.onCommWebsocketMessage = function (jsData) {
 
     // Most commands are forwarded to the Java command server
     if (data.cmd.match(/input./) || data.cmd.match(/display./))
-        return this.commandServer.send(jsData);
+        return this._commandServer.send(jsData);
 
     if (data.cmd == "mouse.down")
         this.touchDown(data.contact, data.point, data.pressure);
@@ -284,31 +255,31 @@ CommWebSocketHandler.prototype.onCommWebsocketMessage = function (jsData) {
 };
 
 CommWebSocketHandler.prototype.touchDown = function (contact, point, pressure) {
-    if (!this.banner) return;
+    if (!this._banner) return;
 
     this._write(util.format(
         "d %s %s %s %s\n",
         contact,
-        Math.floor(this.origin.x(point) * this.banner.maxX),
-        Math.floor(this.origin.y(point) * this.banner.maxY),
-        Math.floor((pressure || 0.5) * this.banner.maxPressure)
+        Math.floor(this.origin.x(point) * this._banner.maxX),
+        Math.floor(this.origin.y(point) * this._banner.maxY),
+        Math.floor((pressure || 0.5) * this._banner.maxPressure)
     ));
 };
 
 CommWebSocketHandler.prototype.touchMove = function (contact, point, pressure) {
-    if (!this.banner) return;
+    if (!this._banner) return;
 
     this._write(util.format(
         "m %s %s %s %s\n",
         contact,
-        Math.floor(this.origin.x(point) * this.banner.maxX),
-        Math.floor(this.origin.y(point) * this.banner.maxY),
-        Math.floor((pressure || 0.5) * this.banner.maxPressure)
+        Math.floor(this.origin.x(point) * this._banner.maxX),
+        Math.floor(this.origin.y(point) * this._banner.maxY),
+        Math.floor((pressure || 0.5) * this._banner.maxPressure)
     ));
 };
 
 CommWebSocketHandler.prototype.touchUp = function (contact) {
-    if (!this.banner) return;
+    if (!this._banner) return;
     return this._write(util.format("u %s\n", contact));
 };
 

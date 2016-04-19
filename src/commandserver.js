@@ -20,7 +20,7 @@ var debug = require("debug")("RI.sw");
 var path = require("path");
 var util = require("util");
 
-var CommandServer = function () {
+var CommandServer = function (/*props*/) {
     this.rotationSignal = new signals.Signal();
     this.errorSignal = new signals.Signal();
     this.stopSignal = new signals.Signal();

@@ -19,16 +19,11 @@ var path = require("path");
 var fs = require("fs");
 var uuid = require("uuid");
 
-var props = require("./props.js");
 var DaemonProcess = require("./daemon_process.js");
 
-var Minitouch = function () {
+var Minitouch = function (props) {
     DaemonProcess.call(this);
-
-    this.props = [
-        "ro.product.cpu.abi",
-        "ro.build.version.sdk"
-    ];
+    this._props = props;
 };
 
 util.inherits(Minitouch, DaemonProcess);
@@ -42,22 +37,18 @@ Minitouch.prototype.start = function () {
 
     this._socketName = uuid.v1();
 
-    props.getprops(this.props, function (err, props) {
-        if (err) throw err;
+    var abi = this._props["ro.product.cpu.abi"];
+    var sdk = this._props["ro.build.version.sdk"];
+    var exec, bin;
 
-        var abi = props["ro.product.cpu.abi"];
-        var sdk = props["ro.build.version.sdk"];
-        var exec, bin;
+    bin = sdk >= 16 ? "minitouch" : "minitouch-nopie";
 
-        bin = sdk >= 16 ? "minitouch" : "minitouch-nopie";
+    var args = [
+        "-n", self._socketName
+    ];
+    exec = path.join(process.cwd(), "_bin", "minitouch", abi, bin);
 
-        var args = [
-            "-n", self._socketName
-        ];
-        exec = path.join(process.cwd(), "_bin", "minitouch", abi, bin);
-
-        self._start(exec, args);
-    });
+    self._start(exec, args);
 };
 
 module.exports = Minitouch;

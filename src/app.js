@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Opersys inc.
+ * Copyright (C) 2015-2016 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ var path = require("path");
 var debug = require("debug")("RI");
 //require("longjohn");
 
+var getprops = require("./props.js").getprops;
 var CommandServer = require("./commandserver.js");
 var DisplayWebSocketHandler = require("./display_websocket.js");
 var CommWebSocketHandler = require("./comm_websocket.js");
@@ -65,10 +66,21 @@ var wssmt = new WebSocketServer({ server: server, path: "/comm" });
 var commandServer = new CommandServer();
 commandServer.start();
 
-new DisplayWebSocketHandler(wssmc, commandServer);
-new CommWebSocketHandler(wssmt, commandServer);
+// Preload all the read-only properties to be used in the rest of the code to
+// avoid dealing with asynchroneous calls.
+getprops([
+    "ro.product.model",
+    "ro.product.cpu.abi",
+    "ro.build.version.sdk",
+    "ro.product.manufacturer"],
+    function (err, props) {
+        if (err) throw err;
 
-server.listen(app.get("port"));
+        new DisplayWebSocketHandler(wssmc, commandServer, props);
+        new CommWebSocketHandler(wssmt, commandServer, props);
+
+        server.listen(app.get("port"));
+    });
 
 // Handle receiving the "quit" command from the UI.
 process.stdin.on("data", function (chunk) {

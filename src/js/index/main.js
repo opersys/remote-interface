@@ -102,9 +102,11 @@ function onDisplayInfo(info) {
 function refreshPreview() {
     var url, pimg;
 
-    url = URL.createObjectURL(firstFrame);
-    pimg = document.getElementById("previewImage");
-    pimg.setAttribute("src", url);
+    if (firstFrame != null) {
+        url = URL.createObjectURL(firstFrame);
+        pimg = document.getElementById("previewImage");
+        pimg.setAttribute("src", url);
+    }
 }
 
 function onDisplayFrame(frame) {

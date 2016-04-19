@@ -18,6 +18,7 @@ var cp = require("child_process");
 var debug = require("debug")("RI.Proc");
 var signals = require("signals");
 var util = require("util");
+var fs = require("fs");
 
 var P_IDLE = 1;
 var P_STARTING = 2;
@@ -25,29 +26,35 @@ var P_STARTED = 3;
 var P_STOPPING = 4;
 var P_STOPPED = 5;
 var P_RESTARTING = 6;
+var P_ERROR = 7;
 
 var statesString = {
     1: "P_IDLE",
     2: "P_STARTING",
     3: "P_STARTED",
     4: "P_STOPPING",
-    5: "P_STOPPED"
+    5: "P_STOPPED",
+    6: "P_RESTARTING",
+    7: "P_ERROR"
 };
 
 var processCount = 0;
 
 var DaemonProcess = function () {
     this._state = P_IDLE;
+    this._stderrStr = "";
+    this._stdoutStr = "";
 
     this.id = processCount++;
     this.startingSignal = new signals.Signal();
     this.startedSignal = new signals.Signal();
     this.stoppingSignal = new signals.Signal();
     this.stoppedSignal = new signals.Signal();
+    this.errorSignal = new signals.Signal();
 };
 
 DaemonProcess.prototype._setState = function (newState) {
-    if (!newState || newState < P_IDLE || newState > P_RESTARTING)
+    if (!newState || newState < P_IDLE || newState > P_ERROR)
         throw new Error("Invalid state: " + newState);
 
     debug(util.format("Process %d %s -> %s", this.id, statesString[this._state], statesString[newState]));
@@ -55,20 +62,40 @@ DaemonProcess.prototype._setState = function (newState) {
     this._state = newState;
 };
 
-DaemonProcess.prototype._onStop = function () {
+DaemonProcess.prototype._onStop = function (code) {
+    if (code != 0) {
+        this._setState(P_ERROR);
+        this.errorSignal.dispatch(null, this._stdoutStr, this._stderrStr);
+    }
+
     this._setState(P_STOPPED);
     this.stoppedSignal.dispatch();
 };
 
 DaemonProcess.prototype._onError = function (err) {
-    this.stoppedSignal.dispatch(err);
+    this._setState(P_ERROR);
+    this.errorSignal.dispatch(err, this._stdoutStr, this._stderrStr);
+
+    this._setState(P_STOPPED);
+    this.stoppedSignal.dispatch(this._stdoutStr);
 };
 
-DaemonProcess.prototype._onData = function () {
+DaemonProcess.prototype._onStdoutData = function (data) {
     if (this._state == P_STARTING) {
         this._setState(P_STARTED);
         this.startedSignal.dispatch();
     }
+
+    this._stdoutStr += data;
+};
+
+DaemonProcess.prototype._onStderrData = function (data) {
+    if (this._state == P_STARTING) {
+        this._setState(P_STARTED);
+        this.startedSignal.dispatch();
+    }
+
+    this._stderrStr += data;
 };
 
 DaemonProcess.prototype._start = function (exec, args) {
@@ -76,12 +103,23 @@ DaemonProcess.prototype._start = function (exec, args) {
 
     this._setState(P_STARTING);
 
+    // If the process file isn't executable, make it so! This happens when the project
+    // is manually extracted and copied on a device.
+    var stats = fs.statSync(exec);
+
+    if (!(stats.mode & 0100)) {
+        debug("chmod 0700 " + exec);
+        fs.chmodSync(exec, 0700);
+    }
+
+    debug(exec + " " + args.join(" "));
+
     this._cp = cp.spawn(exec, args);
 
     this._cp.on("close", this._onStop.bind(this));
     this._cp.on("error", this._onError.bind(this));
-    this._cp.stdout.on("data", this._onData.bind(this));
-    this._cp.stderr.on("data", this._onData.bind(this));
+    this._cp.stdout.on("data", this._onStdoutData.bind(this));
+    this._cp.stderr.on("data", this._onStderrData.bind(this));
 };
 
 DaemonProcess.prototype.start = function () {

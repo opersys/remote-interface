@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Opersys inc.
+ * Copyright (C) 2015-2016 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,40 +18,43 @@ var _ = require("underscore");
 var async = require("async");
 var fs = require("fs");
 var debug = require("debug")("RI.ws.display");
-var abs = require("abstract-socket");
 var util = require("util");
-var cp = require("child_process");
 var uuid = require("uuid");
 var path = require("path");
 
 var Display = require("./display_info.js");
-var props = require("./props.js");
 var Minicap = require("./minicap_process.js");
 var MinicapHelper = require("./daemon_process_helpers");
 
-var DisplayWebSocketHandler = function (wss, screenwatcher) {
-    this.initialSize = Display.getInitialDisplaySize(0);
-    this.baseSize = Display.getBaseDisplaySize(0);
-    this.currentSize = this.baseSize;
-    this.currentRotation = Display.getRotation();
+var DisplayWebSocketHandler = function (wss, screenwatcher, props) {
+    this._initialSize = Display.getInitialDisplaySize(0);
+    this._baseSize = Display.getBaseDisplaySize(0);
+    this._props = props;
+    this._currentSize = this._baseSize;
+    this._currentRotation = Display.getRotation(props["ro.build.version.sdk"]);
+
+    if (this._currentRotation == null)
+        throw "Could not get current rotation of the display";
+    else
+        debug("Current rotation: " + this._currentRotation);
 
     this._isRestarting = false;
 
-    this.readBannerBytes = 0;
-    this.bannerLength = 2;
-    this.readFrameBytes = 0;
-    this.frameBodyLength = 0;
-    this.frameBody = new Buffer(0);
+    this._readBannerBytes = 0;
+    this._bannerLength = 2;
+    this._readFrameBytes = 0;
+    this._frameBodyLength = 0;
+    this._frameBody = new Buffer(0);
     this._clearBanner();
 
-    this.screenwatcher = screenwatcher;
-    this.screenwatcher.rotationSignal.add(this.onRotation.bind(this));
+    this._screenwatcher = screenwatcher;
+    this._screenwatcher.rotationSignal.add(this.onRotation.bind(this));
 
     wss.on("connection", this.onDisplayWebSocketConnect.bind(this));
 };
 
 DisplayWebSocketHandler.prototype._clearBanner = function () {
-    this.banner = {
+    this._banner = {
         version: 0,
         length: 0,
         pid: 0,
@@ -62,19 +65,19 @@ DisplayWebSocketHandler.prototype._clearBanner = function () {
         orientation: 0,
         quirks: 0
     };
-    this.readBannerBytes = 0;
+    this._readBannerBytes = 0;
 };
 
 DisplayWebSocketHandler.prototype._sendBannerInfo = function () {
-    debug("Sending banner info: " + util.inspect(this.banner));
+    debug("Sending _banner info: " + util.inspect(this._banner));
 
     this.ws.send(JSON.stringify({
         event: "info",
         data: {
-            realWidth: this.banner.realWidth,
-            realHeight: this.banner.realHeight,
-            virtualWidth: this.banner.virtualWidth,
-            virtualHeight: this.banner.virtualHeight
+            realWidth: this._banner.realWidth,
+            realHeight: this._banner.realHeight,
+            virtualWidth: this._banner.virtualWidth,
+            virtualHeight: this._banner.virtualHeight
         }
     }));
 };
@@ -84,9 +87,10 @@ DisplayWebSocketHandler.prototype.onDisplayWebSocketConnect = function (ws) {
 
     this.ws = ws;
 
-    this._connectStreams();
+    if (!this._minicap)
+        this.startOrRestartMinicap();
 
-    // If there is already a minicap instance running, send back the same banner info.
+    // If there is already a minicap instance running, send back the same _banner info.
     if (this._minicap)
         this._sendBannerInfo();
 
@@ -104,8 +108,8 @@ DisplayWebSocketHandler.prototype.onRotation = function (rot) {
 DisplayWebSocketHandler.prototype.onDisplayWebSocketClose = function () {
     debug("Web socket disconnected");
 
-    this.currentSize = null;
-    this.currentRotation = 0;
+    this._currentSize = null;
+    this._currentRotation = 0;
 
     this.ws = null;
 };
@@ -132,20 +136,20 @@ DisplayWebSocketHandler.prototype.onDisplayWebSocketMessage = function (data) {
 };
 
 DisplayWebSocketHandler.prototype.geom = function (ns, rot) {
-    var newSize = (ns != null ? ns : this.currentSize);
-    var newRot = (rot != null ? rot : this.currentRotation);
+    var newSize = (ns != null ? ns : this._currentSize);
+    var newRot = (rot != null ? rot : this._currentRotation);
 
-    if (_.isEqual(newSize, this.currentSize) && this.currentRotation == newRot) {
+    if (_.isEqual(newSize, this._currentSize) && this._currentRotation == newRot) {
         debug("Current geometry stays active: "
-            + this.currentSize.x + "x" + this.currentSize.y + "/" + this.currentRotation);
+            + this._currentSize.x + "x" + this._currentSize.y + "/" + this._currentRotation);
         return;
     }
 
-    this.currentSize = newSize;
-    this.currentRotation = newRot;
+    this._currentSize = newSize;
+    this._currentRotation = newRot;
 
     debug("New geometry received: "
-        + this.currentSize.x + "x" + this.currentSize.y + "/" + this.currentRotation);
+        + this._currentSize.x + "x" + this._currentSize.y + "/" + this._currentRotation);
 
     this.startOrRestartMinicap();
 };
@@ -154,101 +158,101 @@ DisplayWebSocketHandler.prototype._onStreamTryRead = function tryRead() {
     try {
         for (var chunk; (chunk = this.stream.read());) {
             for (var cursor = 0, len = chunk.length; cursor < len;) {
-                if (this.readBannerBytes < this.bannerLength) {
-                    switch (this.readBannerBytes) {
+                if (this._readBannerBytes < this._bannerLength) {
+                    switch (this._readBannerBytes) {
                         case 0:
                             // version
-                            this.banner.version = chunk[cursor];
+                            this._banner.version = chunk[cursor];
                             break;
                         case 1:
                             // length
-                            this.banner.length = this.bannerLength = chunk[cursor];
+                            this._banner.length = this._bannerLength = chunk[cursor];
                             break;
                         case 2:
                         case 3:
                         case 4:
                         case 5:
                             // pid
-                            this.banner.pid += (chunk[cursor] << ((this.readBannerBytes - 2) * 8)) >>> 0;
+                            this._banner.pid += (chunk[cursor] << ((this._readBannerBytes - 2) * 8)) >>> 0;
                             break;
                         case 6:
                         case 7:
                         case 8:
                         case 9:
                             // real width
-                            this.banner.realWidth += (chunk[cursor] << ((this.readBannerBytes - 6) * 8)) >>> 0;
+                            this._banner.realWidth += (chunk[cursor] << ((this._readBannerBytes - 6) * 8)) >>> 0;
                             break;
                         case 10:
                         case 11:
                         case 12:
                         case 13:
                             // real height
-                            this.banner.realHeight += (chunk[cursor] << ((this.readBannerBytes - 10) * 8)) >>> 0;
+                            this._banner.realHeight += (chunk[cursor] << ((this._readBannerBytes - 10) * 8)) >>> 0;
                             break;
                         case 14:
                         case 15:
                         case 16:
                         case 17:
                             // virtual width
-                            this.banner.virtualWidth += (chunk[cursor] << ((this.readBannerBytes - 14) * 8)) >>> 0;
+                            this._banner.virtualWidth += (chunk[cursor] << ((this._readBannerBytes - 14) * 8)) >>> 0;
                             break;
                         case 18:
                         case 19:
                         case 20:
                         case 21:
                             // virtual height
-                            this.banner.virtualHeight += (chunk[cursor] << ((this.readBannerBytes - 18) * 8)) >>> 0;
+                            this._banner.virtualHeight += (chunk[cursor] << ((this._readBannerBytes - 18) * 8)) >>> 0;
                             break;
                         case 22:
                             // orientation
-                            this.banner.orientation += chunk[cursor] * 90;
+                            this._banner.orientation += chunk[cursor] * 90;
                             break;
                         case 23:
                             // quirks
-                            this.banner.quirks = chunk[cursor];
+                            this._banner.quirks = chunk[cursor];
                             break
                     }
 
                     cursor += 1;
-                    this.readBannerBytes += 1;
+                    this._readBannerBytes += 1;
 
-                    if (this.readBannerBytes === this.bannerLength)
+                    if (this._readBannerBytes === this._bannerLength)
                         this._sendBannerInfo();
                 }
-                else if (this.readFrameBytes < 4) {
-                    this.frameBodyLength += (chunk[cursor] << (this.readFrameBytes * 8)) >>> 0;
+                else if (this._readFrameBytes < 4) {
+                    this._frameBodyLength += (chunk[cursor] << (this._readFrameBytes * 8)) >>> 0;
                     cursor += 1;
-                    this.readFrameBytes += 1;
+                    this._readFrameBytes += 1;
                 }
                 else {
-                    if (len - cursor >= this.frameBodyLength) {
-                        this.frameBody = Buffer.concat([
-                            this.frameBody,
-                            chunk.slice(cursor, cursor + this.frameBodyLength)
+                    if (len - cursor >= this._frameBodyLength) {
+                        this._frameBody = Buffer.concat([
+                            this._frameBody,
+                            chunk.slice(cursor, cursor + this._frameBodyLength)
                         ]);
 
                         // Sanity check for JPG header, only here for debugging purposes.
-                        if (this.frameBody[0] !== 0xFF || this.frameBody[1] !== 0xD8) {
-                            console.error('Frame body does not start with JPG header', this.frameBody);
+                        if (this._frameBody[0] !== 0xFF || this._frameBody[1] !== 0xD8) {
+                            console.error('Frame body does not start with JPG header', this._frameBody);
                             process.exit(1)
                         }
 
-                        this.ws.send(this.frameBody, {
+                        this.ws.send(this._frameBody, {
                             binary: true
                         });
 
-                        cursor += this.frameBodyLength;
-                        this.frameBodyLength = this.readFrameBytes = 0;
-                        this.frameBody = new Buffer(0);
+                        cursor += this._frameBodyLength;
+                        this._frameBodyLength = this._readFrameBytes = 0;
+                        this._frameBody = new Buffer(0);
                     }
                     else {
-                        this.frameBody = Buffer.concat([
-                            this.frameBody,
+                        this._frameBody = Buffer.concat([
+                            this._frameBody,
                             chunk.slice(cursor, len)
                         ]);
 
-                        this.frameBodyLength -= len - cursor;
-                        this.readFrameBytes += len - cursor;
+                        this._frameBodyLength -= len - cursor;
+                        this._readFrameBytes += len - cursor;
                         cursor = len
                     }
                 }
@@ -283,11 +287,32 @@ DisplayWebSocketHandler.prototype._connectStreams = function () {
 
         this.stream.on("error", this._streamErrorHandler);
         this.stream.on("readable", this._streamReadableHandler);
+    } else {
+        var s = "Can't connect websocket with minicap: ";
+
+        if (!this.ws)
+            debug(s + "No websocket link established");
+        if (!this.stream)
+            debug(s + "No stream created");
     }
 };
 
+DisplayWebSocketHandler.prototype._onMinicapError = function (err, stdoutStr, stderrStr) {
+    if (err)
+        debug("Minicap process error: " + err);
+    else
+        debug("Minicap process error");
+
+    debug("STDOUT: " + stdoutStr);
+    debug("STDERR: " + stderrStr);
+};
+
 DisplayWebSocketHandler.prototype._onMinicapStarted = function () {
+    debug("Minicap started, trying to connect");
+
     return MinicapHelper.process_connect.apply(this, ["minicap", this._minicap, function (stream) {
+        debug("Successfully connected to minicap");
+
         this.stream = stream;
 
         this._clearBanner();
@@ -299,6 +324,7 @@ DisplayWebSocketHandler.prototype._onMinicapStopping = function () {
     // We don't want to hear about this process anymore.
     this._minicap.startedSignal.remove(this._startedSignalHandler);
     this._minicap.stoppingSignal.remove(this._stoppingSignalHandler);
+    this._minicap.errorSignal.remove(this._errorSignalHandler);
 
     // Close the stream to minicap if it's open.
     if (this.stream) {
@@ -318,15 +344,18 @@ DisplayWebSocketHandler.prototype._onMinicapStopping = function () {
 };
 
 DisplayWebSocketHandler.prototype._startMinicap = function () {
-    this._minicap = new Minicap();
-    this._minicap.startCapture(this.initialSize, this.currentSize, this.currentRotation);
+    this._minicap = new Minicap(this._props);
 
     this._startedSignalHandler = this._onMinicapStarted.bind(this);
     this._stoppingSignalHandler = this._onMinicapStopping.bind(this);
+    this._errorSignalHandler = this._onMinicapError.bind(this);
     this._isRestarting = false;
 
     this._minicap.startedSignal.add(this._startedSignalHandler);
     this._minicap.stoppingSignal.add(this._stoppingSignalHandler);
+    this._minicap.errorSignal.add(this._errorSignalHandler);
+
+    this._minicap.startCapture(this._initialSize, this._currentSize, this._currentRotation);
 };
 
 DisplayWebSocketHandler.prototype.startOrRestartMinicap = function () {
