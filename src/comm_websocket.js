@@ -197,26 +197,40 @@ CommWebSocketHandler.prototype._onMinitouchStarted = function () {
     }]);
 };
 
-CommWebSocketHandler.prototype._onMinitouchStopping = function () {
-    // Close the stream to minitouch if it's open.
-    if (this.stream) {
-        this.stream.end();
-        this.stream = null;
-    }
+CommWebSocketHandler.prototype._onMinitouchStopped = function () {
+     if (this.stream) {
+         this.stream.end();
+         this.stream = null;
+     }
 
-    if (this._isRestarting) this._startMinitouch();
+    this._minitouch = null;
+
+    if (this._isRestarting)
+        this._startMinitouch();
+    else {
+        // Otherwise, the process has just stopped for some reason. We'll restart
+        // it if the last restart wasn't just a few seconds ago.
+        var now = Date.now();
+
+        if (now - this._lastStartTime > 2000) {
+            debug("Restarting minitouch automatically.");
+            this._startMinitouch();
+        } else
+            debug("Last restart was " + (now - this._lastStartTime) / 1000 + " seconds ago. Not restarting Minicap.");
+    }
 };
 
 CommWebSocketHandler.prototype._startMinitouch = function () {
     this._minitouch = new Minitouch(this._props);
     this._minitouch.start();
 
+    this._lastStartTime = new Date();
     this._startedSignalHandler = this._onMinitouchStarted.bind(this);
-    this._stoppingSignalHandler = this._onMinitouchStopping.bind(this);
+    this._stoppedSignalHandler = this._onMinitouchStopped.bind(this);
     this._isRestarting = false;
 
     this._minitouch.startedSignal.add(this._startedSignalHandler);
-    this._minitouch.stoppingSignal.add(this._stoppingSignalHandler);
+    this._minitouch.stoppedSignal.add(this._stoppedSignalHandler);
 };
 
 CommWebSocketHandler.prototype.startOrRestartMinitouch = function () {
