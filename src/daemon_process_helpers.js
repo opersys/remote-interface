@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Opersys inc.
+ * Copyright (C) 2015-2016 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 var abs = require("abstract-socket");
 var async = require("async");
 var util = require("util");
-var debug = require("debug")("RI.helper");
 
 var process_connect = function (daemonName, proc, successCb) {
     var goodStream, self = this;
+    var debug = require("debug")("RI.Proc." + daemonName);
 
     async.doUntil(
         // Loop code.
@@ -31,7 +31,7 @@ var process_connect = function (daemonName, proc, successCb) {
                 debug("Connecting to socket: " + this.socketName());
                 newStream = abs.connect('\0' + this.socketName());
             } catch (e) {
-                debug(util.format("Failed connection on %s instance %d: " + e), daemonName, this.id);
+                debug("Failed connection: " + e);
             }
 
             if (!this.isStopped()) {
@@ -41,7 +41,7 @@ var process_connect = function (daemonName, proc, successCb) {
                 } else
                     setTimeout(loopCb, 100);
             } else
-                debug(util.format("Lost %s instance: %d", daemonName, this.id));
+                debug("Lost instance");
 
         }).bind(proc),
 
@@ -52,7 +52,7 @@ var process_connect = function (daemonName, proc, successCb) {
 
         // Finish
         function () {
-            debug(util.format("Connected to %s instance no %d", daemonName, proc.id));
+            debug("Connected to socket: " + proc.socketName());
             successCb.apply(self, [goodStream]);
         }
     );

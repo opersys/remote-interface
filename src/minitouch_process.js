@@ -22,7 +22,7 @@ var uuid = require("uuid");
 var DaemonProcess = require("./daemon_process.js");
 
 var Minitouch = function (props) {
-    DaemonProcess.call(this, ["Minitouch"]);
+    DaemonProcess.call(this, ["minitouch"]);
     this._props = props;
 };
 

@@ -317,16 +317,16 @@ DisplayWebSocketHandler.prototype._connectStreams = function () {
 
 DisplayWebSocketHandler.prototype._onMinicapError = function (err, stdoutStr, stderrStr) {
     if (err)
-        debug("Minicap process error: " + err);
+        debug("minicap process error: " + err);
     else
-        debug("Minicap process error");
+        debug("minicap process error");
 
     debug("STDOUT: " + stdoutStr);
     debug("STDERR: " + stderrStr);
 };
 
 DisplayWebSocketHandler.prototype._onMinicapStarted = function () {
-    debug("Minicap started, trying to connect");
+    debug("minicap started, trying to connect");
 
     return MinicapHelper.process_connect.apply(this, ["minicap", this._minicap, function (stream) {
         debug("Successfully connected to minicap");

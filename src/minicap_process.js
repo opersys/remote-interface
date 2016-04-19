@@ -24,7 +24,7 @@ var DaemonProcess = require("./daemon_process.js");
 var debug = require("debug")("RI.Proc.Minicap");
 
 var Minicap = function (props) {
-    DaemonProcess.call(this, ["Minicap"]);
+    DaemonProcess.call(this, ["minicap"]);
     this._props = props;
 };
 
