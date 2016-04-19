@@ -24,7 +24,7 @@ var DaemonProcess = require("./daemon_process.js");
 var debug = require("debug")("RI.Proc.Minicap");
 
 var Minicap = function (props) {
-    DaemonProcess.call(this);
+    DaemonProcess.call(this, ["Minicap"]);
     this._props = props;
 };
 
@@ -56,7 +56,7 @@ Minicap.prototype._arguments = function (initialSize, currentSize, currentRotati
         libdir = path.join(process.cwd(), "_bin", "minicap", "android-" + sdk, abi);
 
     process.env["LD_LIBRARY_PATH"] = libdir;
-    debug("LD_LIBRARY_PATH = " + libdir);
+    this._debug("LD_LIBRARY_PATH = " + libdir);
 
     exec = path.join(process.cwd(), "_bin", "minicap", abi, bin);
     argsCallback(exec, args);

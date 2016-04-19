@@ -15,7 +15,6 @@
  */
 
 var cp = require("child_process");
-var debug = require("debug")("RI.Proc");
 var signals = require("signals");
 var util = require("util");
 var fs = require("fs");
@@ -38,14 +37,13 @@ var statesString = {
     7: "P_ERROR"
 };
 
-var processCount = 0;
-
-var DaemonProcess = function () {
+var DaemonProcess = function (procName) {
     this._state = P_IDLE;
     this._stderrStr = "";
     this._stdoutStr = "";
+    this._name = procName;
+    this._debug = require("debug")("RI.Proc." + this._name);
 
-    this.id = processCount++;
     this.startingSignal = new signals.Signal();
     this.startedSignal = new signals.Signal();
     this.stoppingSignal = new signals.Signal();
@@ -57,7 +55,7 @@ DaemonProcess.prototype._setState = function (newState) {
     if (!newState || newState < P_IDLE || newState > P_ERROR)
         throw new Error("Invalid state: " + newState);
 
-    debug(util.format("Process %d %s -> %s", this.id, statesString[this._state], statesString[newState]));
+    this._debug(util.format("%s -> %s", statesString[this._state], statesString[newState]));
 
     this._state = newState;
 };
@@ -108,11 +106,11 @@ DaemonProcess.prototype._start = function (exec, args) {
     var stats = fs.statSync(exec);
 
     if (!(stats.mode & 0100)) {
-        debug("chmod 0700 " + exec);
+        this._debug("chmod 0700 " + exec);
         fs.chmodSync(exec, 0700);
     }
 
-    debug(exec + " " + args.join(" "));
+    this._debug(exec + " " + args.join(" "));
 
     this._cp = cp.spawn(exec, args);
 
