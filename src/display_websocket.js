@@ -335,7 +335,31 @@ DisplayWebSocketHandler.prototype._onMinicapStopping = function () {
         this.stream = null;
     }
 
+    // If the process was asked to restart, it is expected that it stops...
+    // We restart it immediately.
     if (this._isRestarting) this._startMinicap();
+};
+
+DisplayWebSocketHandler.prototype._onMinicapStopped = function () {
+    var now = Date.now();
+
+    // Don't touch a process that is in the process of being restarted.
+    if (this._isRestarting) return;
+
+    // Clear the minicap instance: it's stopped, it's dead. If we don't do
+    // that, it won't get restarted by startOrRestartMinicap.
+    this._minicap = null;
+
+    // For the websocket to disconnect
+    this._disconnectStreams();
+
+    // Otherwise, the process has just stopped for some reason. We'll restart
+    // it if the last restart wasn't just a few seconds ago.
+    if (now - this._lastStartTime > 2000) {
+        debug("Restarting minicap automatically.");
+        this.startOrRestartMinicap();
+    } else
+        debug("Last restart was " + (now - this._lastStartTime) / 1000 + " seconds ago. Not restarting Minicap.");
 };
 
 DisplayWebSocketHandler.prototype._startMinicap = function () {
@@ -343,13 +367,16 @@ DisplayWebSocketHandler.prototype._startMinicap = function () {
 
     this._startedSignalHandler = this._onMinicapStarted.bind(this);
     this._stoppingSignalHandler = this._onMinicapStopping.bind(this);
+    this._stoppedSignalHandler = this._onMinicapStopped.bind(this);
     this._errorSignalHandler = this._onMinicapError.bind(this);
     this._isRestarting = false;
 
     this._minicap.startedSignal.add(this._startedSignalHandler);
     this._minicap.stoppingSignal.add(this._stoppingSignalHandler);
+    this._minicap.stoppedSignal.add(this._stoppedSignalHandler);
     this._minicap.errorSignal.add(this._errorSignalHandler);
 
+    this._lastStartTime = new Date();
     this._minicap.startCapture(this._initialSize, this._currentSize, this._currentRotation);
 };
 
