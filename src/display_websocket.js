@@ -27,24 +27,26 @@ var Minicap = require("./minicap_process.js");
 var MinicapHelper = require("./daemon_process_helpers");
 
 var DisplayWebSocketHandler = function (wss, screenwatcher, props) {
-    this._initialSize = Display.getInitialDisplaySize(0);
-    this._baseSize = Display.getBaseDisplaySize(0);
-    this._props = props;
-    this._currentSize = this._baseSize;
-    this._currentRotation = Display.getRotation(props["ro.build.version.sdk"]);
-
-    if (this._currentRotation == null)
-        throw "Could not get current rotation of the display";
-    else
-        debug("Current rotation: " + this._currentRotation);
-
     this._isRestarting = false;
-
     this._readBannerBytes = 0;
     this._bannerLength = 2;
     this._readFrameBytes = 0;
     this._frameBodyLength = 0;
     this._frameBody = new Buffer(0);
+    this._props = props;
+
+    this._initialSize = Display.getInitialDisplaySize(0);
+    this._baseSize = Display.getBaseDisplaySize(0);
+    this._currentRotation = Display.getRotation(props["ro.build.version.sdk"]);
+    this._currentSize = this._baseSize;
+
+    if (!this._initialSize)
+        throw "Could not get initial screen size";
+    if (!this._baseSize)
+        throw "Could not get base screen size";
+    if (!this._currentRotation)
+        throw "Could not get current screen rotation";
+
     this._clearBanner();
 
     this._screenwatcher = screenwatcher;
@@ -69,7 +71,7 @@ DisplayWebSocketHandler.prototype._clearBanner = function () {
 };
 
 DisplayWebSocketHandler.prototype._sendBannerInfo = function () {
-    debug("Sending _banner info: " + util.inspect(this._banner));
+    debug("Sending banner info: " + util.inspect(this._banner));
 
     this.ws.send(JSON.stringify({
         event: "info",
@@ -89,9 +91,8 @@ DisplayWebSocketHandler.prototype.onDisplayWebSocketConnect = function (ws) {
 
     if (!this._minicap)
         this.startOrRestartMinicap();
-
-    // If there is already a minicap instance running, send back the same _banner info.
-    if (this._minicap)
+    else
+        // If there is already a minicap instance running, send back the same _banner info.
         this._sendBannerInfo();
 
     ws.on("close", this.onDisplayWebSocketClose.bind(this));
@@ -333,12 +334,6 @@ DisplayWebSocketHandler.prototype._onMinicapStopping = function () {
         this.stream.end();
         this.stream = null;
     }
-
-    // Close the websocket if it's open.
-    /*if (this.ws) {
-        this.ws.close();
-        this.ws = null
-    } */
 
     if (this._isRestarting) this._startMinicap();
 };

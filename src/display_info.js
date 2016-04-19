@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Opersys inc.
+ * Copyright (C) 2015-2016 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,21 +44,11 @@ function getDisplaySize(transNo, dispNo) {
 }
 
 function getInitialDisplaySize(dispNo) {
-    var r = getDisplaySize(6, dispNo);
-
-    if (!r)
-        throw "getInitialDisplaySize returned an unknown value";
-
-    return r;
+    return getDisplaySize(6, dispNo);
 }
 
 function getBaseDisplaySize(dispNo) {
-    var r = getDisplaySize(7, dispNo);
-
-    if (!r)
-        throw "getBaseDisplaySize returned an unknown value";
-
-    return r;
+    return getDisplaySize(7, dispNo);
 }
 
 function getRotation(sdkVersion) {
@@ -88,7 +78,7 @@ function getRotation(sdkVersion) {
             return 270;
     }
 
-    throw "getRotation returned " + r + ", which is not a known value";
+    return null;
 }
 
 module.exports = {

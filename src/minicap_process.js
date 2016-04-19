@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Opersys inc.
+ * Copyright (C) 2015-2016 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,6 @@ Minicap.prototype._arguments = function (initialSize, currentSize, currentRotati
     debug("LD_LIBRARY_PATH = " + libdir);
 
     exec = path.join(process.cwd(), "_bin", "minicap", abi, bin);
-
     argsCallback(exec, args);
 };
 
