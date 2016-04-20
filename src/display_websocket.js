@@ -109,9 +109,6 @@ DisplayWebSocketHandler.prototype.onRotation = function (rot) {
 DisplayWebSocketHandler.prototype.onDisplayWebSocketClose = function () {
     debug("Web socket disconnected");
 
-    this._currentSize = null;
-    this._currentRotation = 0;
-
     this.ws = null;
 };
 
