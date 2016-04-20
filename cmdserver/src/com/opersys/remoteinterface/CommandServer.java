@@ -126,18 +126,21 @@ public class CommandServer {
         public void run() {
             try {
                 while (true) {
-                    String cmdStr, c;
+                    String cmdStr, cmdStrTrim, c;
                     JSONObject cmdObj;
                     JSONTokener jsonTokener;
 
-                    cmdStr = br.readLine().trim();
+                    cmdStr = br.readLine();
+                    if (cmdStr == null) return;
+
+                    cmdStrTrim = br.readLine().trim();
 
                     Log.d(TAG, "COMMAND: " + cmdStr);
 
                     // Discard empty lines in case they happen.
-                    if (cmdStr.equals("")) return;
+                    if (cmdStrTrim.equals("")) return;
 
-                    jsonTokener = new JSONTokener(cmdStr);
+                    jsonTokener = new JSONTokener(cmdStrTrim);
                     try {
                         cmdObj = (JSONObject) jsonTokener.nextValue();
 
@@ -182,10 +185,10 @@ public class CommandServer {
                         }
                         // Unknown command.
                         else {
-                            Log.e(TAG, "Don't know what to do with the command line: " + cmdStr);
+                            Log.e(TAG, "Don't know what to do with the command line: " + cmdStrTrim);
                         }
                     } catch (JSONException ex) {
-                        Log.e(TAG, "Failed to parse command line: " + cmdStr, ex);
+                        Log.e(TAG, "Failed to parse command line: " + cmdStrTrim, ex);
                     }
                 }
             } catch (IOException ex) {
