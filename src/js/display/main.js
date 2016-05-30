@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Opersys inc.
+ * Copyright (C) 2015-2016 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,9 +38,12 @@ var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAA
 var cssTransform = "transform";
 var URL = window.URL || window.webkitURL;
 
-// RELATIVELY CLEANER CODE STARTS HERE.
+var DisplayWindow = function (comm, disp, firstFrame, nativeRes, virtualRes, actualRot) {
+    console.log("Opening display: "
+        + " nativeRes (w: " + nativeRes.w + ", h: " + nativeRes.h + ")"
+        + " virtualRes (x: " + nativeRes.w + ", h: " + nativeRes.h + ")"
+        + " actualRot: " + actualRot);
 
-var DisplayWindow = function (comm, disp, firstFrame) {
     function vendorBackingStorePixelRatio(g) {
         return g.webkitBackingStorePixelRatio ||
             g.mozBackingStorePixelRatio ||
@@ -76,9 +79,9 @@ var DisplayWindow = function (comm, disp, firstFrame) {
 
     this._device = {
         display: {
-            width: 1200,
-            height: 1920,
-            rotation: 0
+            width: nativeRes.w,
+            height: nativeRes.h,
+            rotation: actualRot
         }
     };
 
@@ -184,6 +187,9 @@ DisplayWindow.prototype._onFrame = (function() {
         cachedScreen.bounds.w = target._screen.bounds.w;
         cachedScreen.rotation = target._screen.rotation;
 
+        console.assert(cachedScreen.rotation != null);
+        console.assert(cachedScreen.bounds != null);
+
         if (isRotated(target)) {
             target._canvasAspect = img.height / img.width;
             //root.classList.add('rotated')
@@ -211,6 +217,7 @@ DisplayWindow.prototype._onFrame = (function() {
         var self = this;
 
         this._screen.rotation = this._device.display.rotation;
+        console.assert(this._screen.rotation != null);
 
         var blob = new Blob([frame], {
             type: 'image/jpeg'
@@ -445,8 +452,6 @@ DisplayWindow.prototype._onScreenInterestAreaChanged = function () {
 DisplayWindow.prototype._onScreenInterestLost = function () {
 };
 
-// START OF MESSY CODE
-
-module.exports.runDisplay = function (comm, disp, firstFrame) {
-    window._dispObject = new DisplayWindow(comm, disp, firstFrame);
+module.exports.runDisplay = function (comm, disp, firstFrame, nativeRes, virtualRes, actualRot) {
+    window._dispObject = new DisplayWindow(comm, disp, firstFrame, nativeRes, virtualRes, actualRot);
 };

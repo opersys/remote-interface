@@ -21,7 +21,7 @@ var devicePixelRatio = window.devicePixelRatio || 1;
 var density = Math.max(1, Math.min(1.5, devicePixelRatio || 1));
 var minscale = 0.36;
 
-var initialWs, actualWs, actualRot, comm, disp, firstFrame = null;
+var virtualRes, nativeRes, actualRot, comm, disp, firstFrame = null;
 
 function getWindowSize(dw, dh, rot) {
 
@@ -69,12 +69,15 @@ function onCommInfo(info) {
 
     actualRot = info.rotation;
 
-    if (!initialWs) {
+    console.assert(actualRot != null);
+    console.log("actualRot: " + actualRot);
+
+    if (!virtualRes) {
         // Get a basic starting window size.
-        initialWs = getWindowSize(info.displaySize.x, info.displaySize.y, info.rotation);
+        virtualRes = getWindowSize(info.displaySize.x, info.displaySize.y, info.rotation);
 
         // Send the geometry to minicap.
-        window.disp.geom(initialWs.w, initialWs.h);
+        window.disp.geom(virtualRes.w, virtualRes.h);
     }
 }
 
@@ -87,16 +90,19 @@ function onDisplayInfo(info) {
     document.getElementById("info-virt").textContent = info.virtualWidth + "x" + info.virtualHeight;
 
     if (actualRot == 90 || actualRot == 270) {
-        actualWs = {
-            w: info.virtualWidth,
-            h: info.virtualHeight
-        };
+        virtualRes = {w: info.virtualHeight, h: info.virtualWidth};
+        nativeRes = {w: info.realHeight, h: info.realWidth};
     } else {
-        actualWs = {
-            h: info.virtualHeight,
-            w: info.virtualWidth
-        };
+        virtualRes = {w: info.virtualWidth, h: info.virtualHeight};
+        nativeRes = {w: info.realWidth, h: info.realHeight};
     }
+
+    console.assert(virtualRes != null);
+    console.assert(virtualRes.w != null && virtualRes.h != null);
+    console.assert(nativeRes != null);
+    console.assert(nativeRes.w != null && nativeRes.h != null);
+
+    console.log("virtualRes (w: " + virtualRes.w + ", h: " + virtualRes.h + ")");
 }
 
 function refreshPreview() {
@@ -128,9 +134,9 @@ module.exports.onLoad = function () {
 module.exports.openDisplay = function () {
     var parent = window;
     var win = window.open("display.html", "Remote Display",
-        "menubar=no,status=no,innerWidth=" + actualWs.w + ",innerHeight=" + actualWs.h);
+        "menubar=no,status=no,innerWidth=" + virtualRes.w + ",innerHeight=" + virtualRes.h);
 
     win.addEventListener("load", function () {
-        win.JS.runDisplay(parent.comm, parent.disp, firstFrame);
+        win.JS.runDisplay(parent.comm, parent.disp, firstFrame, nativeRes, virtualRes, actualRot);
     });
 };
