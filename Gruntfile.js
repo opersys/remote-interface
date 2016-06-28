@@ -171,10 +171,18 @@ module.exports = function (grunt) {
                 "cut -f 1 -d ' ' > " + path.join("out", [grunt.config("pkg.name"), "_", arch, ".zip.md5sum"].join(""))].join(" ")
         };
 
-        compress_config["dist_" + arch] = {
+        compress_config["dist_zip_" + arch] = {
             options: {
                 archive: path.join("out", [grunt.config("pkg.name"), "_", arch, ".zip"].join("")),
-                mode: 0
+                mode: 'zip'
+            },
+            files: [{ expand: true, cwd: "./dist_" + arch, src: ["./**"] }]
+        };
+
+        compress_config["dist_tgz_" + arch] = {
+            options: {
+                archive: path.join("out", [grunt.config("pkg.name"), "_", arch, ".tar.gz"].join("")),
+                mode: 'tgz'
             },
             files: [{ expand: true, cwd: "./dist_" + arch, src: ["./**"] }]
         };
@@ -205,7 +213,8 @@ module.exports = function (grunt) {
 
         grunt.registerTask("out_" + arch, [
             "dist_" + arch,
-            "compress:dist_" + arch,
+            "compress:dist_zip_" + arch,
+            "compress:dist_tgz_" + arch,
             "exec:dist_md5sum_" + arch
         ]);
     });
