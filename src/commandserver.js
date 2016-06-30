@@ -49,12 +49,16 @@ CommandServer.prototype.start = function start() {
         if (!r)
             debug("Received " + rots + " instead of full line, discarding");
         else {
-            var ev = JSON.parse(rots);
+            try {
+                var ev = JSON.parse(rots);
 
-            if (ev.event == "rotation")
-                self.rotationSignal.dispatch(ev.rotation);
-            else
-                debug("Unhandled event: " + ev.event);
+                if (ev.event == "rotation")
+                    self.rotationSignal.dispatch(ev.rotation);
+                else
+                    debug("Unhandled event: " + ev.event);
+            } catch (e) {
+                debug("JSON parse error: " + e);
+            }
         }
     });
 
