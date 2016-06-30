@@ -100,6 +100,8 @@ DisplayWebSocketHandler.prototype.onDisplayWebSocketConnect = function (ws) {
 };
 
 DisplayWebSocketHandler.prototype.onRotation = function (rot) {
+    if (!this._minicap) return;
+
     debug("Device rotated, restarting minicap (angle: " + rot + ")");
 
     // Change the new geometry of minicap.
