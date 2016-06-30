@@ -15,31 +15,35 @@
  */
 
 function getSize(nativeRes, rot) {
-    var mh, mw, vw, vh;
+    var mh, vw, vh, portrait;
 
-    mh = 0.75 * window.screen.availHeight;
-    mw = 0.75 * window.screen.availWidth;
+    // nativeRes is the size of the screen at rotation 0.
+    // This will calculate a roughly decent size for the screen
+    // at rotation 0.
+
+    mh = 0.90 * window.screen.availHeight;
+    vh = mh;
+    vw = (nativeRes.w / nativeRes.h) * vh;
+
+    console.log("Return projection: " + vw + "x" + vh);
 
     switch (rot) {
         case 90:
         case 270:
-            vw = mw;
-            vh = (nativeRes.w / nativeRes.h) * vw;
+            return {
+                w: Math.ceil(vh),
+                h: Math.ceil(vw),
+                r: rot
+            };
             break;
         case 0:
         case 180:
-        default:
-            vh = mh;
-            vw = (nativeRes.w / nativeRes.h) * vh;
+            return {
+                w: Math.ceil(vw),
+                h: Math.ceil(vh),
+                r: rot
+            };
     }
-
-    console.log("Return projection: " + vw + "x" + vh);
-
-    return {
-        w: Math.ceil(vw),
-        h: Math.ceil(vh),
-        r: rot
-    };
 }
 
 module.exports = {
