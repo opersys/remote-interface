@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Opersys inc.
+ * Copyright (C) 2015-2016 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,72 +16,31 @@
 
 var CommSocket = require("../common/comm_socket.js");
 var DisplaySocket = require("../common/display_socket.js");
+var Window = require("../common/window.js");
 
-var devicePixelRatio = window.devicePixelRatio || 1;
-var density = Math.max(1, Math.min(1.5, devicePixelRatio || 1));
-var minscale = 0.36;
+//var devicePixelRatio = window.devicePixelRatio || 1;
+//var density = Math.max(1, Math.min(1.5, devicePixelRatio || 1));
+//var minscale = 0.36;
 
 var virtualRes, nativeRes, actualRot, comm, disp, firstFrame = null;
-
-function getWindowSize(dw, dh, rot) {
-
-    function adjustBoundedSize(w, h) {
-        var sw = w * density,
-            sh = h * density,
-            f;
-
-        if (sw < (f = dw * minscale)) {
-            sw *= f / sw;
-            sh *= f / sh;
-        }
-
-        if (sh < (f = dh * minscale)) {
-            sw *= f / sw;
-            sh *= f / sh;
-        }
-
-        return {
-            w: Math.ceil(sw),
-            h: Math.ceil(sh),
-            r: rot
-        }
-    }
-
-    var w = 100;
-    var h = 100;
-
-    switch (rot) {
-        case 90:
-        case 270:
-            return adjustBoundedSize(h, w);
-        case 0:
-        case 180:
-        /* falls through */
-        default:
-            return adjustBoundedSize(w, h);
-    }
-}
 
 function onCommInfo(info) {
     document.getElementById("info-manufacturer").textContent = info.manufacturer;
     document.getElementById("info-model").textContent = info.model;
     document.getElementById("info-abi").textContent = info.abi;
 
+    // Clear the previous virtualRes on rotation.
+    if (info.rotation != actualRot && nativeRes)
+        virtualRes = Window.getSize(nativeRes, info.rotation);
+
+    // Save the new rotation.
     actualRot = info.rotation;
-
-    console.assert(actualRot != null);
-    console.log("actualRot: " + actualRot);
-
-    if (!virtualRes) {
-        // Get a basic starting window size.
-        virtualRes = getWindowSize(info.displaySize.x, info.displaySize.y, info.rotation);
-
-        // Send the geometry to minicap.
-        window.disp.geom(virtualRes.w, virtualRes.h);
-    }
 }
 
 function onRotation(rotation) {
+    if (rotation != actualRot && nativeRes)
+        virtualRes = Window.getSize(nativeRes, rotation);
+
     actualRot = rotation;
 }
 
@@ -89,20 +48,15 @@ function onDisplayInfo(info) {
     document.getElementById("info-display").textContent = info.realWidth + "x" + info.realHeight;
     document.getElementById("info-virt").textContent = info.virtualWidth + "x" + info.virtualHeight;
 
-    if (actualRot == 90 || actualRot == 270) {
-        virtualRes = {w: info.virtualHeight, h: info.virtualWidth};
-        nativeRes = {w: info.realHeight, h: info.realWidth};
-    } else {
-        virtualRes = {w: info.virtualWidth, h: info.virtualHeight};
-        nativeRes = {w: info.realWidth, h: info.realHeight};
-    }
+    // This has to be the resolution has reported by the device, without rotation.
+    nativeRes = {w: info.realWidth, h: info.realHeight};
 
-    console.assert(virtualRes != null);
-    console.assert(virtualRes.w != null && virtualRes.h != null);
+    // Calculate a good virtual resolution if nativeRes is available.
+    if (actualRot != null && nativeRes)
+        virtualRes = Window.getSize(nativeRes, actualRot);
+
     console.assert(nativeRes != null);
     console.assert(nativeRes.w != null && nativeRes.h != null);
-
-    console.log("virtualRes (w: " + virtualRes.w + ", h: " + virtualRes.h + ")");
 }
 
 function refreshPreview() {

@@ -32,6 +32,7 @@ var ImagePool = require("./imagepool.js");
 var rotator = require("./rotator.js");
 var ScalingService = require("./scaler.js");
 var Keyboard = require("./keyboard.js");
+var Window = require("../common/window.js");
 
 var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
@@ -41,7 +42,7 @@ var URL = window.URL || window.webkitURL;
 var DisplayWindow = function (comm, disp, firstFrame, nativeRes, virtualRes, actualRot) {
     console.log("Opening display: "
         + " nativeRes (w: " + nativeRes.w + ", h: " + nativeRes.h + ")"
-        + " virtualRes (x: " + nativeRes.w + ", h: " + nativeRes.h + ")"
+        + " virtualRes (w: " + virtualRes.w + ", h: " + virtualRes.h + ")"
         + " actualRot: " + actualRot);
 
     function vendorBackingStorePixelRatio(g) {
@@ -284,7 +285,6 @@ DisplayWindow.prototype._onCommSocketRotation = function (na) {
         w = this.cachedImageHeight;
     }
 
-    // Resize the window immediately.
     window.resizeTo(w + bw, h + bh);
 
     this._device.display.rotation = na;
@@ -312,7 +312,7 @@ DisplayWindow.prototype._onKeydownListener = function (e) {
 DisplayWindow.prototype._onMouseDown = function (e) {
     e.preventDefault();
 
-    this._input.focus();
+    //this._input.focus();
 
     this._calculateBounds();
 
@@ -334,7 +334,7 @@ DisplayWindow.prototype._onMouseDown = function (e) {
 DisplayWindow.prototype._onMouseMove = function (e) {
     e.preventDefault();
 
-    this._input.focus();
+    //this._input.focus();
 
     this._calculateBounds();
 
@@ -347,6 +347,8 @@ DisplayWindow.prototype._onMouseMove = function (e) {
         y,
         this._screen.rotation);
 
+    //console.log("%o - %o", scaled, {x: e.pageX, y: e.pageY});
+
     this._commSock.mouseMove({
         x: scaled.xP,
         y: scaled.yP
@@ -356,7 +358,7 @@ DisplayWindow.prototype._onMouseMove = function (e) {
 DisplayWindow.prototype._onMouseUp = function (e) {
     e.preventDefault();
 
-    this._input.focus();
+    //this._input.focus();
 
     this._calculateBounds();
 
