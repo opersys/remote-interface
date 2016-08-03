@@ -31,7 +31,7 @@ You can pick some other port than 3000 but it is the default. Then launch an ADB
 > cd /data/local/tmp
 > DEBUG=RI* node ./app.js
 
-*DEBUG=RI\** is not mandatory but it helps to see the behaviour of the program while its running.
+*DEBUG=RI* is not mandatory but it helps to see the behaviour of the program while its running.
 
 ## How to use the source
 
