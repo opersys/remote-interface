@@ -12,7 +12,28 @@ This project includes code from the following OpenSTF components:
 * STF - https://github.com/openstf/stf
 * ADBKit - https://github.com/openstf/adbkit
 
-# How to use this project
+# How to run this project
+
+You have the choice to download one of the prebuilt distributions for ARM or x86-based devices, or build the source yourself
+
+## How to use prebuilt distributions.
+
+Prebuilts source distributions are available on the [curent repository release](https://github.com/opersys/remote-interface). Pick the distributions meant for the architecture of your device, extract it somewhere, then push the whole extracted content in your device:
+
+> adb push dist_arm/* /data/local/tmp/RI
+
+Before entering the *adb shell*, you need to forward the port you will use to connect on your device
+
+> adb forward tcp:3000 tcp:3000
+
+You can pick some other port than 3000 but it is the default. Then launch an ADB shell and run the following command to start the Remote Interface web client
+
+> cd /data/local/tmp
+> DEBUG=RI* node ./app.js
+
+*DEBUG=RI* is not mandatory but it helps to see the behaviour of the program while its running.
+
+## How to use the source
 
 An .apk launcher is being developed but you can use this project as-is by manually pushing the required files on your device */data/local/tmp/*. You need to push *dist_arm* or *dist_ia32* depending on whether your device is an ARM device or an Intel x86 based devices. The *dist_arm* should work on ARM64 devices and so does *dist_ia32* for 64 bit x86 devices.
 
