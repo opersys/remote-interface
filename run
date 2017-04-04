@@ -1,0 +1,254 @@
+#!/bin/bash
+
+declare -ga ABILIST
+declare -g DEVICE
+declare -g PORT
+declare -g ARCH
+declare -g OFFLINE=no
+declare -g GH_RELEASES=https://api.github.com/repos/opersys/remote-interface/releases
+declare -g GH_DOWNLOAD=https://github.com/opersys/remote-interface/releases/download/
+declare -g RI_DIR=$HOME/.config/opersys/RI
+declare -g RI_TARGET_DIR=/data/local/tmp/RI
+
+ensureInPath() {
+	if ! $(which $1 > /dev/null); then
+		echo "$1 must be in the path"
+		exit 1
+	fi
+}
+
+getOptions() {
+    while getopts s:p:o opt; do
+        case $opt in
+            s)
+                DEVICE=$OPTARG
+                ;;
+            p)
+                PORT=$OPTARG
+                ;;
+            o)
+                OFFLINE=yes
+        esac
+    done
+
+    if [[ -z ${DEVICE} ]]; then
+        local devCount=$(callAdb devices | grep -e device$ | wc -l)
+
+        if [ $devCount -gt 1 ]; then
+            echo "Multiple devices exists. Use -s."
+            exit 1
+        elif [ $devCount -eq 0 ]; then
+            echo "No devices detected."
+            exit 1
+        elif [ $devCount -eq 1 ]; then
+            DEVICE=$(callAdb devices | grep -e device$ | cut -f 1)
+        fi
+    fi
+
+    if [[ -z ${PORT} ]]; then
+        PORT=3000;
+    fi
+}
+
+getArchitecture() {
+    # Check if the device is ARM or i386
+    ABILIST=($(callAdb shell getprop "ro.product.cpu.abilist" | tr ',' ' '))
+
+    for abi in ${ABILIST[@]}; do
+        if [[ ${abi} == "armeabi" ]]; then
+            ARCH=arm
+        fi
+    done
+}
+
+# Call to ADB. Remove \r characters after the output. Otherwise just plainly call
+# ADB with the correct device serial number.
+callAdb() {
+	local cmd=$1
+	shift
+
+    if [[ $cmd == "devices" ]]; then
+        adb $cmd | tr -d '\r'
+    elif [[ $cmd == "shell" ]]; then
+        adb -s $DEVICE $cmd "$*" | tr -d '\r'
+	else
+		adb -s $DEVICE $cmd $* | tr -d '\r'
+    fi
+}
+
+# Try to get the version of the locally installed RI.
+getLocalRIVersion() {
+    local localVer
+
+    localVer=$(callAdb shell "if [ -f ${RI_TARGET_DIR}/TAG ]; then cat ${RI_TARGET_DIR}/TAG; else echo @; fi")
+    if [[ $localVer != "@" ]]; then
+        echo $localVer
+    else
+        echo ""
+    fi
+}
+
+# Get the last version of RI available online.
+getRemoteRIVersion() {
+    local remoteVer
+
+    remoteVer=$(curl --silent ${GH_RELEASES} | grep tag_name | head -1 | cut -d ':' -f 2 | tr -d '", ')
+    if [[ $? == 0 ]]; then
+        echo $remoteVer
+    else
+        echo ""
+    fi
+}
+
+getLastDownloadVersion() {
+    if [[ -e ${RI_DIR}/lastVer ]]; then
+        cat ${RI_DIR}/lastVer
+    else
+        echo ""
+    fi
+}
+# Run the program on the device.
+forwardAndRun() {
+    # Forward the port.
+    callAdb forward tcp:$PORT tcp:3000
+
+    callAdb shell "(cd ${RI_TARGET_DIR} && DEBUG=RI* ${RI_TARGET_DIR}/node app.js)"
+
+    xdg-open "http://localhost:$PORT"
+}
+
+# If we can't fetch the last version online, try to find a previously downloaded version.
+localPackage() {
+    local lastLocalVer=$1
+    local dlname=remote-interface_${ARCH}.tar.gz
+
+    if [[ -n $lastLocalVer ]]; then
+        echo ${RI_DIR}/${lastLocalVer}/${dlname}
+    else
+        echo ""
+    fi
+}
+
+# Download the last package from GitHub, returning the path to the locally downloaded
+# package. Returns an empty string if we couldn't find a package.
+download() {
+    local remoteVer=$1
+    local dlname=remote-interface_${ARCH}.tar.gz
+    local dlTarget=${RI_DIR}/${remoteVer}/${dlname}
+
+    # Only try to download if we got a remote version.
+    if [[ -n $remoteVer ]]; then
+        mkdir -p ${RI_DIR}/${remoteVer}
+        curl --silent --location "${GH_DOWNLOAD}/${remoteVer}/${dlname}" > ${dlTarget}
+    fi
+
+    if [[ -e ${dlTarget} ]]; then
+        echo ${dlTarget}
+        echo ${remoteVer} > ${RI_DIR}/lastVer
+        return
+    fi
+
+    echo ""
+}
+
+# Copy and extract the package on the device.
+# Returns 0 if the install succeeded, 1 if it failed.
+install() {
+    local installVer=$1 packageFile=$2 trgFile=$(basename $packageFile)
+    local hasSucceeded
+
+    # Upload the correct package to the device.
+    callAdb push $packageFile ${RI_TARGET_DIR}/${trgFile}
+    callAdb shell "gzip -d -c ${RI_TARGET_DIR}/${trgFile} | busybox tar -C ${RI_TARGET_DIR} -x"
+    callAdb shell "echo ${installVer} > ${RI_TARGET_DIR}/TAG"
+
+    hasSucceeded=$(callAdb shell "if [ -d ${RI_TARGET_DIR} ]; then echo 'yes'; else echo 'no'; fi;")
+
+    if [[ $hasSucceeded == "yes" ]]; then
+        return 0;
+    else
+        return 1;
+    fi
+}
+
+run() {
+    local remoteVer localVer lastDownloadVer installingVer packageFile
+
+    if [[ ${OFFLINE} == "no" ]]; then
+        remoteVer=$(getRemoteRIVersion)
+
+        if [[ -n $remoteVer ]]; then
+            echo "RI: Last version online is: ${remoteVer}"
+        else
+            echo "RI: Could not find last version number online."
+        fi
+    fi
+
+    localVer=$(getLocalRIVersion)
+
+    if [[ -n $localVer ]]; then
+        echo "RI: Curent version on device is: ${localVer}"
+    else
+        echo "RI: Not installed on the device"
+    fi
+
+    lastDownloadVer=$(getLastDownloadVersion)
+
+    if [[ -n $lastDownloadVer ]]; then
+        echo "RI: Last downloaded version is: ${lastDownloadVer}"
+    else
+        echo "RI: No RI package were found downloaded locally."
+    fi
+
+    if [[ $remoteVer != $localVer || $lastDownloadVer != $localVer || -z $localVer ]]; then
+        if [[ ${OFFLINE} == "no" && $lastDownloadVer != $remoteVer ]]; then
+            echo "RI: Downloading version $remoteVer"
+            packageFile=$(download $remoteVer)
+        fi
+
+        if [[ -z $packageFile ]]; then
+            echo "RI: Not downloading an RI package, using a local version"
+
+            packageFile=$(localPackage $lastDownloadVer)
+            if [[ -z $packageFile ]]; then
+                echo "Could not find a downloaded RI package locally"
+                exit 1
+            else
+                installingVer=$lastDownloadVer
+            fi
+        else
+            installingVer=$remoteVer
+        fi
+
+        if [[ $installingVer != $localVer ]]; then
+            install $installingVer $packageFile
+            if [[ $? == 0 ]]; then
+                echo "RI: Version ${installingVer} is now installed on the device."
+            else
+                echo "RI: Failed to install RI on the device."
+                exit 1
+            fi
+        fi
+    fi
+
+    echo "RI: Running the current local version"
+
+    forwardAndRun
+}
+
+ensureInPath adb
+ensureInPath unzip
+ensureInPath xdg-open
+ensureInPath curl
+
+getOptions $*
+
+getArchitecture
+if [[ -n $ARCH ]]; then
+    echo "RI: Target architecture is ${ARCH}"
+else
+    echo "RI: Unknown architecture";
+    exit 1
+fi
+
+run
