@@ -15,7 +15,7 @@
  */
 
 function getSize(nativeRes, rot) {
-    var mh, vw, vh, portrait;
+    var mh, vw, vh;
 
     // nativeRes is the size of the screen at rotation 0.
     // This will calculate a roughly decent size for the screen

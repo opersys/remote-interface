@@ -17,9 +17,11 @@
 package com.opersys.remoteinterface;
 
 import android.content.Context;
+import android.graphics.Point;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemClock;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.*;
 import jp.co.cyberagent.stf.compat.InputManagerWrapper;
@@ -30,6 +32,8 @@ import org.json.JSONTokener;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 /**
  * Tiny console program that sits around and receive notification from the window manager when
@@ -40,7 +44,7 @@ import java.io.InputStreamReader;
  */
 public class CommandServer {
 
-    private static String TAG = "RI.CommandServer";
+    private static String TAG = "RI.CmdSrv";
 
     private static void setInitialRotation(int n) {
         IWindowManager wm;
@@ -56,7 +60,7 @@ public class CommandServer {
     }
 
     private static class CommandHandlerThread extends Thread {
-        private static String TAG = "RI.CommandServer.CommandHandlerThread";
+        private static String TAG = "RI.CmdSrv.Thread";
 
         private BufferedReader br;
         private IWindowManager wm;
@@ -124,6 +128,8 @@ public class CommandServer {
         }
 
         public void run() {
+            Log.d(TAG, "Command Handler Thread is STARTING");
+
             try {
                 while (true) {
                     String cmdStr, cmdStrTrim, c;
@@ -133,7 +139,7 @@ public class CommandServer {
                     cmdStr = br.readLine();
                     if (cmdStr == null) return;
 
-                    cmdStrTrim = br.readLine().trim();
+                    cmdStrTrim = cmdStr.trim();
 
                     Log.d(TAG, "COMMAND: " + cmdStr);
 
@@ -208,8 +214,47 @@ public class CommandServer {
         }
     }
 
+
     private static class RotationWatcherThread extends Thread {
-        private static String TAG = "RI.CommandServer.RotationWatcherThread";
+
+        private int watchRotation(IWindowManager wm, IRotationWatcher rw) {
+            Class<?> wmClazz = IWindowManager.class;
+            Method[] wmMethods;
+            Method wrMethod = null;
+            boolean needsDispId = false;
+
+            wmMethods = wmClazz.getMethods();
+
+            for (Method m : wmMethods) {
+                if (m.getName().equals("watchRotation")) {
+                    if (m.getParameterTypes().length == 2) {
+                        wrMethod = m;
+                        needsDispId = true;
+                    } else if (m.getParameterTypes().length == 1)
+                        wrMethod = m;
+                }
+            }
+
+            if (wrMethod != null) {
+                Object activeRotation;
+
+                try {
+                    if (needsDispId)
+                        activeRotation = wrMethod.invoke(wm, rw, 0);
+                    else
+                        activeRotation = wrMethod.invoke(wm, rw);
+
+                    return rotationToDegrees((int)activeRotation);
+                }
+                catch (IllegalAccessException | InvocationTargetException ex) {
+                    throw new NoSuchMethodError("Error calling RotationWatcher");
+                }
+            }
+            else
+                throw new NoSuchMethodError("Cannot find the right 'watchRotation' method");
+        }
+
+        private static String TAG = "RI.CmdSrv.RotThread";
 
         IRotationWatcher watcher = new IRotationWatcher.Stub() {
             @Override
@@ -223,11 +268,11 @@ public class CommandServer {
                 event = new JSONObject();
 
                 try {
-                    event.put("event", "rotation");
+                    event.put("event", "initial_rotation");
                     event.put("rotation", deg);
 
                 } catch (JSONException ex) {
-                    Log.e(TAG, "Invalid JSON", ex);
+                    Log.e(TAG, "Invalid JSON generated", ex);
                 }
 
                 System.out.println(event.toString());
@@ -252,22 +297,52 @@ public class CommandServer {
         public void run() {
             IWindowManager wm;
 
+            Log.d(TAG, "Rotation Watcher Thread is STARTING");
+
             try {
                 wm = IWindowManager.Stub.asInterface(ServiceManager.getService(Context.WINDOW_SERVICE));
-                wm.watchRotation(watcher);
+
+                if (wm != null) {
+                    JSONObject event, res;
+                    int activeRotDeg;
+                    Point size = new Point();
+
+                    activeRotDeg = watchRotation(wm, watcher);
+                    wm.getBaseDisplaySize(0, size);
+
+                    Log.d(TAG, "Current rotation: " + activeRotDeg);
+                    Log.d(TAG, "Current resolution: W: " + size.x + ", H: " + size.y);
+
+                    event = new JSONObject();
+                    res = new JSONObject();
+
+                    try {
+                        res.put("w", size.x);
+                        res.put("h", size.y);
+
+                        event.put("event", "info");
+                        event.put("rotation", activeRotDeg);
+                        event.put("actualResolution", res);
+
+                    } catch (JSONException ex) {
+                        Log.e(TAG, "Invalid JSON generated", ex);
+                    }
+
+                    System.out.println(event.toString());
+
+                } else
+                    throw new NullPointerException("Can't get WindowManager!");
 
                 synchronized (this) {
                     while (!isInterrupted()) {
                         wait();
                     }
                 }
-            } catch (RemoteException e) {
-                Log.e(TAG, "Remote exception while talking to the window manager service", e);
-            } catch (InterruptedException e) {
-                Log.e(TAG, "Interruption while talking to the window manager service", e);
+            } catch (InterruptedException | RemoteException ex) {
+                Log.e(TAG, "Interruption while talking to the window manager service", ex);
+            } finally {
+                Log.d(TAG, "Rotation Watcher Thread is ENDING");
             }
-
-            Log.d(TAG, "Rotation Watcher Thread is ENDING");
         }
     }
 
@@ -275,6 +350,8 @@ public class CommandServer {
         Thread rotWatcher, cmdHandler;
 
         Log.d(TAG, "Starting CommandServer");
+
+        //setInitialRotation(Surface.ROTATION_0);
 
         rotWatcher = new RotationWatcherThread();
         cmdHandler = new CommandHandlerThread();

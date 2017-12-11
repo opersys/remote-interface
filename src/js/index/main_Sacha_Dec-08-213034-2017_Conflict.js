@@ -35,9 +35,6 @@ function onCommInfo(info) {
 
     // Save the new rotation.
     actualRot = info.rotation;
-
-    console.assert(actualRot != null);
-    console.assert(virtualRes != null);
 }
 
 function onRotation(rotation) {
@@ -78,8 +75,8 @@ function onDisplayFrame(frame) {
 
 module.exports.onLoad = function () {
     window.comm = new CommSocket();
-    window.comm.onRotation.add(onRotation);
     window.comm.onInfo.add(onCommInfo);
+    window.comm.onRotation.add(onRotation);
 
     window.disp = new DisplaySocket();
     window.disp.onInfo.add(onDisplayInfo);

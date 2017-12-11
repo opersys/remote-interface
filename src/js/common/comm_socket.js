@@ -21,10 +21,12 @@ var CommSocket = function () {
     this.onClose = new signals.Signal();
     this.onRotation = new signals.Signal();
     this.onInfo = new signals.Signal();
+    this.onError = new signals.Signal();
 
     this._ws = new WebSocket("ws://" + window.location.host + "/comm", "minitouch");
     this._ws.onopen = this._onOpen.bind(this);
     this._ws.onclose = this._onClose.bind(this);
+    this._ws.onerror = this._onError.bind(this);
 };
 
 CommSocket.prototype._onMessage = function (msg) {
@@ -42,6 +44,10 @@ CommSocket.prototype._onMessage = function (msg) {
         default:
             console.log("Unhandled event type: " + eventData.event);
     }
+};
+
+CommSocket.prototype._onError = function (err) {
+    console.error(err.message);
 };
 
 CommSocket.prototype._onOpen = function () {

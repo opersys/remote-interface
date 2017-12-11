@@ -21,17 +21,19 @@ var path = require("path");
 var signals = require("signals");
 var uuid = require("uuid");
 
-var Display = require("./display_info.js");
 var Minitouch = require("./minitouch_process.js");
 var MinitouchHelper = require("./daemon_process_helpers");
 
 var CommWebSocketHandler = function (wss, commandServer, props) {
-    this._props = props;
-    this._banner = null;
-    this._commandServer = commandServer;
-    this._commandServer.rotationSignal.add(this.onRotation.bind(this));
+    var self = this;
 
-    wss.on("connection", this.onCommWebsocketConnect.bind(this));
+    self._props = props;
+    self._banner = null;
+    self._commandServer = commandServer;
+    self._commandServer.rotationSignal.add(self.onRotation.bind(self));
+    self._commandServer.infoSignal.add(self.onInfo.bind(self));
+
+    wss.on("connection", self.onCommWebsocketConnect.bind(self));
 };
 
 CommWebSocketHandler.prototype.onCommWebsocketConnect = function (ws) {
@@ -39,34 +41,54 @@ CommWebSocketHandler.prototype.onCommWebsocketConnect = function (ws) {
 
     debug("Web socket connected");
 
-    this.ws = ws;
-
-    if (!this._minitouch)
-        this.startOrRestartMinitouch();
-
-    ws.on("close", this.onCommWebsocketClose.bind(this));
-    ws.on("message", this.onCommWebsocketMessage.bind(this));
+    self.ws = ws;
 
     self.ws.send(JSON.stringify({
         "event": "info",
         "data": {
-            "displaySize": Display.getInitialDisplaySize(0),
-            "rotation": Display.getRotation(this._props["ro.build.version.sdk"]),
+            "displaySize": self.infoDisplaySize,
+            "rotation": self.infoRotation,
             "model": this._props["ro.product.model"],
             "abi": this._props["ro.product.cpu.abi"],
             "manufacturer": this._props["ro.product.manufacturer"]
         }
-    }));
+    }), function (err) {
+        if (err) debug("Could not send banner information: " + err.message);
+    });
+
+    if (!self._minitouch)
+        self.startOrRestartMinitouch();
+
+    ws.on("close", self.onCommWebsocketClose.bind(self));
+    ws.on("message", self.onCommWebsocketMessage.bind(self));
+    ws.on("error", self.onCommWebsocketError.bind(self));
+};
+
+CommWebSocketHandler.prototype.onCommWebsocketError = function (err) {
+    debug("Web socket error:" + e.message);
 };
 
 CommWebSocketHandler.prototype.onCommWebsocketClose = function () {
     debug("Web socket disconnected");
 };
 
+CommWebSocketHandler.prototype.onInfo = function (displaySize, rotation) {
+    var self = this;
+
+    self.infoDisplaySize = displaySize;
+    self.infoRotation = rotation;
+};
+
 CommWebSocketHandler.prototype.onRotation = function (rotation) {
     // Send the rotation event.
-    if (this.ws)
-        this.ws.send(JSON.stringify({event: "rotation", data: rotation}));
+    if (this.ws) {
+        this.ws.send(
+            JSON.stringify({event: "rotation", data: rotation})
+            /*function (err) {
+                if (err) debug("Web socket error on send: " + err.message);
+            }*/
+        );
+    }
 };
 
 /*

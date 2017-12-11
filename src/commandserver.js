@@ -22,6 +22,7 @@ var util = require("util");
 
 var CommandServer = function (/*props*/) {
     this.rotationSignal = new signals.Signal();
+    this.infoSignal = new signals.Signal();
     this.errorSignal = new signals.Signal();
     this.stopSignal = new signals.Signal();
 
@@ -54,6 +55,8 @@ CommandServer.prototype.start = function start() {
 
                 if (ev.event == "rotation")
                     self.rotationSignal.dispatch(ev.rotation);
+                else if (ev.event == "info")
+                    self.infoSignal.dispatch(ev.actualResolution, ev.rotation);
                 else
                     debug("Unhandled event: " + ev.event);
             } catch (e) {

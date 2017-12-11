@@ -26,7 +26,6 @@ var md5file = require("md5-file");
 module.exports = function (grunt) {
 
     var mkdir_config = {},
-        bower_config = {},
         copy_config = {},
         webpack_config = {},
         prebuilts_config = {},
@@ -66,22 +65,6 @@ module.exports = function (grunt) {
                     mkdist("public", "images"),
                     "out"
                 ]
-            }
-        };
-
-        bower_config["dist_" + arch] = {
-            dest: mkdist("public", "js"),
-            css_dest: mkdist("public", "css"),
-            options: {
-                expand: true,
-                packageSpecific: {
-                    "jquery": {
-                        keepExpandedHierarchy: false
-                    },
-                    "sigma.js": {
-                        files: [ "sigma.min.js", "plugins/*"]
-                    }
-                }
             }
         };
 
@@ -203,7 +186,6 @@ module.exports = function (grunt) {
 
         grunt.registerTask("dist_" + arch, [
             "mkdir:dist_" + arch,
-            "bower:dist_" + arch,
             "webpack:dist_" + arch,
             "copy:dist_" + arch,
             "prebuilts:dist_" + arch,
@@ -220,7 +202,6 @@ module.exports = function (grunt) {
     });
 
     grunt.config("mkdir", mkdir_config);
-    grunt.config("bower", bower_config);
     grunt.config("webpack", webpack_config);
     grunt.config("copy", copy_config);
     grunt.config("exec", exec_config);
@@ -344,7 +325,6 @@ module.exports = function (grunt) {
     });
 
     grunt.loadNpmTasks("grunt-mkdir");
-    grunt.loadNpmTasks("grunt-bower");
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-auto-install");
     grunt.loadNpmTasks("grunt-exec");

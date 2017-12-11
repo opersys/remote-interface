@@ -42,6 +42,11 @@ DisplaySocket.prototype._connect = function () {
 
     this._ws.onopen = this._onOpen.bind(this);
     this._ws.onclose = this._onClose.bind(this);
+    this._ws.onerror = this._onError.bind(this);
+};
+
+DisplaySocket.prototype._onError = function (err) {
+    console.error(err.message);
 };
 
 DisplaySocket.prototype._onMessage = function (msg) {

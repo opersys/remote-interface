@@ -112,9 +112,9 @@ var DisplayWindow = function (comm, disp, firstFrame, nativeRes, virtualRes, act
     this._canvas.addEventListener("mouseup", this._onMouseUp.bind(this));
     this._canvas.addEventListener("mouseleave", this._onMouseUp.bind(this));
 
-    this._input.addEventListener("keydown", this._onKeydownListener.bind(this));
-    this._input.addEventListener("keyup", this._onKeyupListener.bind(this));
-    this._input.addEventListener("input", this._onInputListener.bind(this));
+    this._input.addEventListener("keydown", this._onKeydownListener(this));
+    this._input.addEventListener("keyup", this._onKeyupListener(this));
+    this._input.addEventListener("input", this._onInputListener(this));
 
     window.onresize = _.debounce(this.updateBounds, 1000).bind(this);
     window.onbeforeunload = this._onWindowBeforeUnload.bind(this);
@@ -321,7 +321,7 @@ DisplayWindow.prototype._onKeydownListener = function (e) {
 DisplayWindow.prototype._onMouseDown = function (e) {
     e.preventDefault();
 
-    this._input.focus();
+    //this._input.focus();
 
     this._calculateBounds();
 
@@ -343,7 +343,7 @@ DisplayWindow.prototype._onMouseDown = function (e) {
 DisplayWindow.prototype._onMouseMove = function (e) {
     e.preventDefault();
 
-    this._input.focus();
+    //this._input.focus();
 
     this._calculateBounds();
 
@@ -367,7 +367,7 @@ DisplayWindow.prototype._onMouseMove = function (e) {
 DisplayWindow.prototype._onMouseUp = function (e) {
     e.preventDefault();
 
-    this._input.focus();
+    //this._input.focus();
 
     this._calculateBounds();
 
