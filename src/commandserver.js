@@ -19,6 +19,7 @@ var signals = require("signals");
 var debug = require("debug")("RI.sw");
 var path = require("path");
 var util = require("util");
+var fs = require("fs");
 
 var CommandServer = function (/*props*/) {
     this.rotationSignal = new signals.Signal();
@@ -36,12 +37,16 @@ CommandServer.prototype.send = function (cmd) {
 
 CommandServer.prototype.start = function start() {
     var self = this;
+    var appProcess = "/system/bin/app_process";
 
     debug("Starting CommandServer");
 
     process.env["CLASSPATH"] = path.join("_bin", "cmdserver.apk");
 
-    this._sw = cp.spawn("/system/bin/app_process", [".", "com.opersys.remoteinterface.CommandServer"]);
+    if (fs.existsSync("/system/bin/app_process64"))
+        appProcess = "/system/bin/app_process64";
+
+    this._sw = cp.spawn(appProcess, [".", "com.opersys.remoteinterface.CommandServer"]);
 
     this._sw.stdout.on("data", function (data) {
         var r, rots = data.toString();
@@ -65,8 +70,13 @@ CommandServer.prototype.start = function start() {
         }
     });
 
-    this._sw.on("close", function () {
+    this._sw.on("exit", function (code, signal) {
+        debug("CommandServer exited");
+
         self.stopSignal.dispatch();
+
+        if (code)   debug("CommandServer exit code: " +  code);
+        if (signal) debug("CommandServer exit signal: " + signal);
     });
 
     this._sw.on("error", function (err) {
