@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Opersys inc.
+ * Copyright (C) 2015-2018 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ module.exports = function (grunt) {
         has_config = true;
     }
 
-    _.each(["arm", "ia32"], function (arch) {
+    _.each(["arm", "arm64", "ia32"], function (arch) {
 
         var mkdist = function (arch) {
             return function () {
@@ -229,7 +229,7 @@ module.exports = function (grunt) {
         var architectures = [];
 
         if (!arch)
-            architectures = ["ia32", "arm"];
+            architectures = ["ia32", "arm", "arm64"];
         else
             architectures = [arch];
 
@@ -334,7 +334,7 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks("grunt-template");
     grunt.loadNpmTasks("grunt-webpack");
 
-    grunt.registerTask("default", ["dist_arm", "dist_ia32"]);
-    grunt.registerTask("pack", ["out_arm", "out_ia32", "template"]);
+    grunt.registerTask("default", ["dist_arm", "dist_arm64", "dist_ia32"]);
+    grunt.registerTask("pack", ["out_arm", "out_arm64", "out_ia32", "template"]);
 };
 

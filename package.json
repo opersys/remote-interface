@@ -10,20 +10,24 @@
   "prebuilts": {
     "modules": {
       "ia32": [
-        "https://github.com/opersys/jsbinder/releases/download/0.3.1/jsbinder-0.3.1_ia32.tar.gz",
         "https://github.com/fdgonthier/node-abstractsocket/releases/download/v2.0.0/abstract-socket-2.0.0_ia32.tar.gz"
       ],
       "arm": [
-        "https://github.com/opersys/jsbinder/releases/download/0.3.1/jsbinder-0.3.1_arm.tar.gz",
         "https://github.com/fdgonthier/node-abstractsocket/releases/download/v2.0.0/abstract-socket-2.0.0_arm.tar.gz"
+      ],
+      "arm64": [
+        "https://github.com/fdgonthier/node-abstractsocket/releases/download/v2.0.0/abstract-socket-2.0.0_arm64.tar.gz"
       ]
     },
     "misc": {
       "ia32": [
-        "https://github.com/opersys/node/releases/download/v0.10.33/node_ia32.tar.gz"
+        "https://github.com/fdgonthier/nodejs-mobile/releases/download/v8.6.0-pre/node_ia32.tar.gz"
       ],
       "arm": [
-        "https://github.com/opersys/node/releases/download/v0.10.33/node_arm.tar.gz"
+        "https://github.com/fdgonthier/nodejs-mobile/releases/download/v8.6.0-pre/node_arm.tar.gz"
+      ],
+      "arm64": [
+        "https://github.com/fdgonthier/nodejs-mobile/releases/download/v8.6.0-pre/node_arm64.tar.gz"
       ]
     }
   },

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Opersys inc.
+ * Copyright (C) 2015-2018 Opersys inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,41 +19,39 @@ var async = require("async");
 var util = require("util");
 
 var process_connect = function (daemonName, proc, successCb) {
-    var goodStream, self = this;
+    var self = this;
     var debug = require("debug")("RI.Proc." + daemonName);
+    var isConn = false;
+    var client;
 
     async.doUntil(
         // Loop code.
         (function (loopCb) {
-            var newStream;
-
-            try {
+            if (!isConn) {
                 debug("Connecting to socket: " + this.socketName());
-                newStream = abs.connect('\0' + this.socketName());
-            } catch (e) {
-                debug("Failed connection: " + e);
-            }
-
-            if (!this.isStopped()) {
-                if (newStream) {
-                    goodStream = newStream;
+                client = abs.connect('\0' + this.socketName(), function () {
+                    isConn = true;
                     loopCb();
-                } else
-                    setTimeout(loopCb, 100);
-            } else
-                debug("Lost instance");
+                });
 
+                client.on('error', function (e) {
+                    debug("Connection failed: " + e);
+                    setTimeout(loopCb, 200);
+                });
+            }
         }).bind(proc),
 
         // Test if the connection is established.
         function () {
-            return goodStream != null;
+            return isConn /*|| self.isStopped()*/;
         },
 
         // Finish
         function () {
-            debug("Connected to socket: " + proc.socketName());
-            successCb.apply(self, [goodStream]);
+            if (isConn) {
+                debug("Connected to socket: " + proc.socketName());
+                successCb.apply(self, [client]);
+            }
         }
     );
 };
