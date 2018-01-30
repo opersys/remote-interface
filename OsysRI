@@ -1,0 +1,16 @@
+
+#!/system/bin/sh
+
+# Detect if the / is read only.
+mount | grep system.*ro > /dev/null
+if [ $? -eq 0 ]; then
+   echo "Cannot proceed with file system as read only. Remount it RW."
+   exit 1
+fi   
+
+cat /proc/modules | grep virtual_touchscreen > /dev/null
+if [ $? -eq 1 ]; then
+    insmod /system/lib/modules/virtual_touchscreen.ko
+fi
+    
+(cd /system/Osys/RI && DEBUG=* node app.js)
