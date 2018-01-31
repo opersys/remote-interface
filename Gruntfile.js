@@ -32,23 +32,13 @@ module.exports = function (grunt) {
         prebuilts_config = {},
         exec_config = {},
         compress_config = {},
-        handlebars_config = {},
-        has_config = false;
+        handlebars_config = {};
 
-    if (!fs.existsSync("config.json")) {
-        grunt.log.writeln("No config.json source found, won't be compiling modules.");
-        grunt.config.init({
-            pkg: grunt.file.readJSON("package.json")
-        });
-    } else {
-        grunt.config.init({
-            pkg: grunt.file.readJSON("package.json"),
-            cfg: grunt.file.readJSON("config.json")
-        });
-        has_config = true;
-    }
+    grunt.config.init({
+        pkg: grunt.file.readJSON("package.json")
+    });
 
-    _.each(["arm", "arm64", "ia32"], function (arch) {
+    _.each(["arm", "arm64", "ia32", "x86_64"], function (arch) {
 
         var mkdist = function (arch) {
             return function () {
@@ -64,7 +54,7 @@ module.exports = function (grunt) {
                     mkdist("public", "css"),
                     mkdist("public", "fonts"),
                     mkdist("public", "images"),
-                    "out"
+                    "prebuilt_" + arch
                 ]
             }
         };
@@ -123,34 +113,10 @@ module.exports = function (grunt) {
             }
         };
 
-        exec_config["dist_md5sum_" + arch] = {
-            command: [
-                "md5sum", path.join("out", [grunt.config("pkg.name"), "_", arch, ".zip"].join("")),
-                "|",
-                "cut -f 1 -d ' ' > " + path.join("out", [grunt.config("pkg.name"), "_", arch, ".zip.md5sum"].join(""))].join(" ")
-        };
-
-        compress_config["dist_zip_" + arch] = {
-            options: {
-                archive: path.join("out", [grunt.config("pkg.name"), "_", arch, ".zip"].join("")),
-                mode: 'zip'
-            },
-            files: [{ expand: true, cwd: "./dist_" + arch, src: ["./**"] }]
-        };
-
-        compress_config["dist_tgz_" + arch] = {
-            options: {
-                archive: path.join("out", [grunt.config("pkg.name"), "_", arch, ".tar.gz"].join("")),
-                mode: 'tgz'
-            },
-            files: [{ expand: true, cwd: "./dist_" + arch, src: ["./**"] }]
-        };
-
         prebuilts_config["dist_" + arch] = _.map(grunt.config("pkg.prebuilts.modules." + arch), function (v) {
             return {
                 url: v,
-                tagDest: mkdist(),
-                dest: mkdist("node_modules")
+                arch: arch
             };
         });
 
@@ -162,13 +128,6 @@ module.exports = function (grunt) {
             "prebuilts:dist_" + arch,
             "handlebars:dist_" + arch
         ]);
-
-        grunt.registerTask("out_" + arch, [
-            "dist_" + arch,
-            "compress:dist_zip_" + arch,
-            "compress:dist_tgz_" + arch,
-            "exec:dist_md5sum_" + arch
-        ]);
     });
 
     grunt.config("mkdir", mkdir_config);
@@ -179,58 +138,39 @@ module.exports = function (grunt) {
     grunt.config("compress", compress_config);
     grunt.config("handlebars", handlebars_config);
 
-    grunt.config("template", {
-        "process-otlauncher-template": {
-            "options": {
-                "data": function () {
-                    return {
-                        "ia32_md5sum": md5file(["out/", grunt.config("pkg.name"), "_ia32", ".zip"].join("")),
-                        "arm_md5sum": md5file(["out/", grunt.config("pkg.name"), "_arm", ".zip"].join(""))
-                    }
-                }
-            },
-            "files": {
-                "out/otlauncher.json": ["otlauncher.json.tmpl"]
-            }
-        }
-    });
-    
-    function downloadAndExtract(dataUrl, dataDest, tagDest, doneCb) {
-        var tag = path.join(tagDest, ".dltag." + path.basename(dataUrl));
+    function extract(arch, dlfile, doneCb) {
+        var exdest = path.join("dist_" + arch, "node_modules");
+        grunt.log.writeln("Extracting: " + dlfile);
+        tarball.extractTarball(dlfile, exdest, doneCb);
+    }
 
-        fs.exists(tag, function (exists) {
+    function downloadAndExtract(arch, dataUrl, doneCb) {
+        var url = new URL(dataUrl);
+        var dlfile = path.basename(url.pathname);
+        var dldest = path.join("prebuilt_" + arch , dlfile);
+
+        fs.exists(dldest, function (exists) {
             if (!exists) {
-                var url = new URL(dataUrl);
-                var dlfile = path.basename(url.pathname);
-                var dldest = path.join(dataDest, dlfile);
                 var dlstream = got.stream(url.toString());
 
-                fs.writeFile(tag, "", function () {
-                    dlstream.on("end", function () {
-                        tarball.extractTarball(dldest, dataDest, function (err) {
-                            if (err) throw err;
-                            grunt.log.writeln("Done extracting: " + dldest);
-                            fs.unlinkSync(dldest);
-                            doneCb();
-                        });
-                    });
-                    dlstream.pipe(fs.createWriteStream(dldest));
+                grunt.log.writeln("Downloading: " + dataUrl);
+
+                dlstream.on("end", function () {
+                    extract(arch, dldest, doneCb);
                 });
-            } else {
-                grunt.log.writeln("Not downloading " + dataUrl + ": already done");
-                doneCb();
+                dlstream.pipe(fs.createWriteStream(dldest));
             }
+            else extract(arch, dldest, doneCb);
         });
     }
 
-    grunt.registerTask("jsbinder_oreo", "Generate an Oreo build", function () {
+    grunt.registerTask("jsbinder_oreo", "Fetches JSBinder for Oreo", function (arch) {
         var done = this.async();
-        
-        if (!fs.existsSync("dist_arm64/node_modules/jsbinder")) {
+
+        if (!fs.existsSync("dist_" + arch + "/node_modules/jsbinder")) {
             downloadAndExtract(
-                "https://github.com/opersys/jsbinder/releases/download/0.4.0-Oreo/jsbinder-0.4.0_oreo_arm64.tar.gz",
-                "dist_arm64/node_modules",
-                "dist_arm64",
+                arch,
+                "https://github.com/opersys/jsbinder/releases/download/0.4.0-Oreo/jsbinder-0.4.0_oreo_" + arch + ".tar.gz",
                 done);
         }
     });
@@ -241,9 +181,8 @@ module.exports = function (grunt) {
 
         async.each(data,
             function (dldata, callback) {
-                downloadAndExtract(dldata.url, dldata.dest, dldata.tagDest, callback);
-            },
-            done
+                downloadAndExtract(dldata.arch, dldata.url, callback);
+            }, done
         );
     });
 
@@ -257,8 +196,8 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks("grunt-template");
     grunt.loadNpmTasks("grunt-webpack");
 
-    grunt.registerTask("oreo", ["dist_arm64", "jsbinder_oreo"]);
-    grunt.registerTask("default", ["dist_arm", "dist_arm64", "dist_ia32"]);
-    grunt.registerTask("pack", ["out_arm", "out_arm64", "out_ia32", "template"]);
+    grunt.registerTask("x86_64", ["dist_x86_64", "jsbinder_oreo:x86_64"]);
+    grunt.registerTask("ia32", ["dist_ia32"]);
+    grunt.registerTask("arm", ["dist_arm"]);
+    grunt.registerTask("arm64", ["dist_arm64", "jsbinder_oreo:arm64"]);
 };
-
