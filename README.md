@@ -22,25 +22,25 @@ You first also need a working version of Node.js. https://nodejs.org/en/download
 
 Install the required packages:
 
-> `npm install`
+> $ npm install
 
 Assemble the package to install on the device:
 
-> `grunt [x86_64|arm64]`
+> $ grunt [x86_64|arm64]
 
 Run 'mm' to insert the application on the device
 
-> `mm`
+> $ mm
 
 # Running
 
 The application can be run from the ADB shell but you need to forward ports first:
 
-> adb forward tcp:3000 tcp:3000
+> $ adb forward tcp:3000 tcp:3000
 
 You can then run the application from within the ADB shell:
 
-> OsysRI
+> $ OsysRI
 
 You can access the app on localhost:3000
 
@@ -52,11 +52,11 @@ To remove the application from the build:
 
 Remove the launcher
 
-> `rm out/target/product/[product name]/system/bin/OsysRI`
+> $ rm out/target/product/[product name]/system/bin/OsysRI
 
 At this point, if you run `mm` again, the application will be reinstalled on the device. This is how to reinstall the app if you've done modifications.
 
-> `rm out/target/product/[product name]/system/Osys/RI`
+> $ rm out/target/product/[product name]/system/Osys/RI
 
 # Contributors
 * François-Denis Gonthier francois-denis.gonthier@opersys.com -- main developer and maintainer
