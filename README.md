@@ -56,7 +56,7 @@ Remove the launcher
 
 At this point, if you run `mm` again, the application will be reinstalled on the device. This is how to reinstall the app if you've done modifications.
 
-> $ rm out/target/product/[product name]/system/Osys/RI
+> $ rm -rf out/target/product/[product name]/system/Osys/RI
 
 # Contributors
 * François-Denis Gonthier francois-denis.gonthier@opersys.com -- main developer and maintainer
